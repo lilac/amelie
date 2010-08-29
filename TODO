@@ -1,0 +1,23 @@
+Remaining points
+
+ALL DOABLE FROM WITHIN GHCI.
+
+* Paste form
+* Html representation of (1) paste list, (2) single paste, (3) new paste
+* CGI search page with pagination, paste viewer, new paste
+* Check UTF-8 support
+* RSS feed
+* JSON feed
+* Convert to FastCGI
+* Create cabal file
+* Unit tests?
+* Ab benchmarks?
+* Create README
+
+FINALLY
+
+* Upload and setup on tryhaskell.org
+
+OPTIONALLY
+
+Make a page that will speedstep through a git repo's diffs.

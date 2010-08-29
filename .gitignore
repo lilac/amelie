@@ -1,0 +1,5 @@
+dist/
+httpd/*.log
+httpd/*.pid
+*.hi
+*.o

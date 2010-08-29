@@ -1,0 +1,37 @@
+Name:                amelie
+Version:             0.1
+Synopsis:            A paste web site.
+Description:         A simple paste web site based on FastCGI and PostgreSQL.
+Homepage:            http://github.com/chrisdone/amelie
+License:             BSD3
+License-file:        LICENSE
+Author:              Chris Done <chrisdone@gmail.com>
+Maintainer:          chrisdone@gmail.com
+Copyright:           2010 Chris Done 
+Category:            Web
+Build-type:          Custom
+Extra-source-files:  README
+Cabal-version:       >=1.2
+
+Executable amelie.fcgi
+  Main-is:           Main.hs
+  Hs-source-dirs:    src
+  Build-depends:     base               >= 3 && <5
+                    ,formlets           >= 0.7.2
+                    ,xhtml              >= 3000.2
+                    ,highlighting-kate  >= 0.2.7.1
+                    ,blaze-html         >= 0.2.3 && < 0.3
+                    ,safe               >= 0.2
+                    ,fastcgi            >= 3001.0.2.3 && < 3001.0.3
+                    ,cgi                >= 3001.1.8.1
+                    ,Takusen            >= 0.8.6
+                    ,text               >= 0.7.2.1 && < 0.7.3
+                    ,split              >= 0.1.2
+                    ,ConfigFile         >= 1.0.6
+                    ,directory          >= 1.0.1.1
+                    ,mtl                >= 1.1.0.2
+                    ,applicative-extras >= 0.1.6
+                    ,filepath           >= 1.1.0.4
+                    ,stringsearch       >= 0.3.0
+                    ,bytestring         >= 0.9.1.7
+
