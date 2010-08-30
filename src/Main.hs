@@ -12,7 +12,7 @@ import           Control.Monad                  (ap)
 import           Control.Monad.Identity         (Identity)
 import           Control.Monad.Identity         (runIdentity)
 import           Control.Monad.State            (MonadState,StateT)
-import           Control.Monad.State            (gets,modify,evalStateT)
+import           Control.Monad.State            (gets,modify,runStateT)
 import           Control.Monad.Trans            (MonadIO)
 import           Control.Monad.Trans            (liftIO,lift)
 import qualified Data.ByteString.Char8          as B (readFile,concat,pack)
@@ -117,7 +117,7 @@ main = do
   result <- readConfigFile "amelie.conf"
   case result of
     Left cperr   -> error $ show cperr
-    Right config -> runFastCGIorCGI $ runPage config router
+    Right config -> runFastCGIorCGI $ CGI.handleErrors $ runPage config router
 
 -- | Route requests to the right page.
 router :: SCGI CGIResult
@@ -168,7 +168,9 @@ runPage :: Config -> SCGI CGIResult -> CGI CGIResult
 runPage config@Config{dbconn=(host,user,pass)} m = do
   ((),sess) <- liftIO $ DB.withContinuedSession connector (return ())
   let state = State { dbsess = sess, config = config }
-  flip evalStateT state $ runSCGI m
+  (cgiResult,State{dbsess}) <- flip runStateT state $ runSCGI m
+  liftIO $ DB.withSession dbsess $ return ()
+  return cgiResult
   where connector = DB.connect [DB.CAhost host,DB.CAuser user,DB.CApassword pass]
 
 -- | Put a rendered page into its corresponding HTML template.
@@ -220,13 +222,13 @@ newPastePage cl = do
     Success paste -> do pid' <- db $ createPaste paste
                         -- TODO: redirect to the paste page.
                         CGI.output $ "Paste " ++ show pid' ++ " created!"
-  where pageWithErrors errs form submitted = CGI.outputFPS $ renderHtml $ do
+  where pageWithErrors errs form submitted = template "New paste" "new" $ do
           if submitted
             then H.ul . mconcat . map (H.li . H.text . pack) $ errs
             else mempty
           H.form ! A.method "post" $ do
             H.preEscapedString form
-            H.input ! A.type_ "submit" ! A.value "Create Paste"
+            H.input ! A.type_ "submit" ! A.value "Create Paste" ! A.class_ "submit"
             H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
 
 -- | A friendly error page.
@@ -290,7 +292,7 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
 -- | Label an input and apply a predicate to it for making inputs required.
 label :: (Show a,Monad m,Applicative m) =>
           String -> (a -> Bool) -> X.Form Html.Html m a -> X.Form Html.Html m a
-label caption p inp = XH.label caption *> (inp `X.check` X.ensure p msg) where
+label caption p inp = XH.label (caption ++ ": ") *> (inp `X.check` X.ensure p msg) where
   msg = caption ++ ": must be provided"
 
 -- | Highlighting CSS.
