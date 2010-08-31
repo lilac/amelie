@@ -2,16 +2,16 @@ Remaining points
 
 ALL DOABLE FROM WITHIN GHCI.
 
-* Paste form
-* Html representation of (1) paste list, (2) single paste, (3) new paste
+* DONE: Paste form
+* HDONE: tml representation of (1) paste list, (2) single paste, (3) new paste
 * CGI search page with pagination, paste viewer, new paste
 * Check UTF-8 support
 * RSS feed
 * JSON feed
-* Convert to FastCGI
-* Create cabal file
+* DONE: Convert to FastCGI
+* DONE: Create cabal file
 * Unit tests?
-* Ab benchmarks?
+* DONE: Ab benchmarks? 20r/s
 * Create README
 
 FINALLY
@@ -21,3 +21,8 @@ FINALLY
 OPTIONALLY
 
 Make a page that will speedstep through a git repo's diffs.
+
+* Sessions for quickly editing mistakes for just-posted hpastes
+* Hoogle support ("links") on symbols
+* Viewer can select the viewing type
+* Tryhaskell?
