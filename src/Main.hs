@@ -15,11 +15,13 @@ import           Control.Monad.State            (MonadState,StateT)
 import           Control.Monad.State            (gets,modify,runStateT)
 import           Control.Monad.Trans            (MonadIO)
 import           Control.Monad.Trans            (liftIO,lift)
+import qualified Data.ByteString.Char8          as B (ByteString)
 import qualified Data.ByteString.Char8          as B (readFile,concat,pack)
-import qualified Data.ByteString.Lazy           as L (toChunks)
-import           Data.Char                      (toLower,isDigit,isLetter)
+import qualified Data.ByteString.Lazy           as L (ByteString)
+import qualified Data.ByteString.Lazy           as L (toChunks,fromChunks)
+import           Data.Char                      (toLower,isDigit,isLetter,toUpper)
 import           Data.Data                      (Data,Typeable)
-import           Data.List                      (find,nub,intercalate,group)
+import           Data.List                      (find,nub,intercalate,group,foldl')
 import           Data.Maybe                     (listToMaybe,isJust)
 import           Data.Monoid                    (mconcat,mempty)
 import           System.Directory               (doesFileExist)
@@ -178,15 +180,22 @@ template :: (MonadState State m,MonadCGI m,MonadIO m)
             => Title -> PageName -> H.Html -> m CGIResult
 template title' name inner = do
   tempDir <- gets $ templateDir . config
-  let path = tempDir </> (name ++ ".html")
-  exists <- liftIO $ doesFileExist path
+  let (temp,page) = (tempDir </> "template.html",tempDir </> name ++ ".html")
+  exists <- liftIO $ (&&) <$> doesFileExist temp 
+            <*> doesFileExist page
   if exists
-     then do templ <- liftIO $ B.readFile path
-             CGI.outputFPS $
-               replace "<!--TITLE-->" (B.pack title') $
-                 B.concat $ L.toChunks $ replace "<!--INNER-->" (renderHtml inner) 
-                                                  templ
+     then do templ <- liftIO $ B.readFile page
+             mainTempl <- liftIO $ B.readFile temp
+             let innerHtml = B.concat $ L.toChunks $ renderHtml inner
+                 params = [("page",templ),("name",B.pack name),
+                           ("title",B.pack title'),("inner",innerHtml)] 
+             CGI.outputFPS $ fillTemplate params mainTempl
      else CGI.outputFPS $ renderHtml inner
+
+fillTemplate :: [(String,B.ByteString)] -> B.ByteString -> L.ByteString
+fillTemplate xs str = L.fromChunks . return $ foldl' rep str xs where
+  rep acc (this,with) = B.concat $ L.toChunks $ replace this' with acc where
+    this' = B.pack $ "$" ++ map toUpper this ++ "$"
 
 -- | A CGI page of all pastes.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
@@ -254,7 +263,6 @@ pastesHtml = table . H.tbody . mconcat . map pasteRowHtml where
 pasteHtml :: Paste -> H.Html
 pasteHtml paste@Paste{..} = do
   H.style $ text highlightCSS
-  H.h1 $ text title
   H.dl $ do def "Author" $ text author
             def "Channel" $ text $ maybe "-" chanName channel
   H.div $ H.preEscapedString $ pasteHighlightedHtml paste
