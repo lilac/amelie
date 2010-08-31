@@ -177,8 +177,9 @@ runPage config@Config{dbconn=(host,user,pass)} m = do
 
 -- | Put a rendered page into its corresponding HTML template.
 template :: (MonadState State m,MonadCGI m,MonadIO m)
-            => Title -> PageName -> H.Html -> m CGIResult
-template title' name inner = do
+            => Title -> PageName -> [(String,B.ByteString)] -> Maybe H.Html
+            -> m CGIResult
+template title' name ps inner = do
   tempDir <- gets $ templateDir . config
   let (temp,page) = (tempDir </> "template.html",tempDir </> name ++ ".html")
   exists <- liftIO $ (&&) <$> doesFileExist temp 
@@ -186,22 +187,36 @@ template title' name inner = do
   if exists
      then do templ <- liftIO $ B.readFile page
              mainTempl <- liftIO $ B.readFile temp
-             let innerHtml = B.concat $ L.toChunks $ renderHtml inner
-                 params = [("page",templ),("name",B.pack name),
-                           ("title",B.pack title'),("inner",innerHtml)] 
+             let params = [("page",templ)
+                          ,("name",B.pack name)
+                          ,("title",B.pack title')]
+                          ++ ps ++ renderedHtml
              CGI.outputFPS $ fillTemplate params mainTempl
-     else CGI.outputFPS $ renderHtml inner
+     else maybe (errorPage $ "No template for " ++ name) 
+                (CGI.outputFPS . renderHtml) 
+                inner
+    where renderedHtml = case inner of
+            Just in' -> [("inner",l2s $renderHtml in')]
+            Nothing -> []
 
 fillTemplate :: [(String,B.ByteString)] -> B.ByteString -> L.ByteString
 fillTemplate xs str = L.fromChunks . return $ foldl' rep str xs where
-  rep acc (this,with) = B.concat $ L.toChunks $ replace this' with acc where
-    this' = B.pack $ "$" ++ map toUpper this ++ "$"
+  rep acc (this,with) = l2s $ replace this' with acc where
+    this' = B.pack $ "<$" ++ map toUpper this ++ "$>"
 
 -- | A CGI page of all pastes.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
               => m CGIResult
-pastesPage =
-  db allPastes >>= template "All Pastes" "pastes" . pastesHtml
+pastesPage = do
+  pastes <- db $ allPastesLimitBy 20
+  cl <- db chansAndLangs
+  let latestPastes = l2s $ renderHtml $ pastesListHtml pastes
+      newPasteForm = l2s $ renderHtml $
+                     newPasteHtml Nothing $ snd $ pasteForm cl []
+  template "All Pastes" "pastes" 
+           [("latest_pastes",latestPastes)
+           ,("new_paste_form",newPasteForm)]
+           Nothing
 
 -- | A CGI page to show a paste.
 pastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
@@ -215,7 +230,10 @@ pastePage ps cl =
         result <- db $ pasteById pid'' cl
         case result of
           Nothing -> noSuchPaste
-          Just paste@Paste{title} -> template title "paste" (pasteHtml paste)
+          Just paste@Paste{title} ->
+            let info = l2s $ renderHtml $ pasteInfoHtml paste
+                paste' = l2s $ renderHtml $ pastePasteHtml paste
+            in template title "paste" [("info",info),("paste",paste')] Nothing
   where noSuchPaste = errorPage "Unknown paste."
         noPasteGiven = errorPage "No paste given."
 
@@ -229,24 +247,40 @@ newPastePage cl = do
   case result of
     Failure errs -> pageWithErrors errs formHtml submitted
     Success paste -> do pid' <- db $ createPaste paste
-                        -- TODO: redirect to the paste page.
-                        CGI.output $ "Paste " ++ show pid' ++ " created!"
-  where pageWithErrors errs form submitted = template "New paste" "new" $ do
-          if submitted
-            then H.ul . mconcat . map (H.li . H.text . pack) $ errs
-            else mempty
-          H.form ! A.method "post" $ do
-            H.preEscapedString form
-            H.input ! A.type_ "submit" ! A.value "Create Paste" ! A.class_ "submit"
-            H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
+                        CGI.redirect $ link "paste" [("pid",show pid')
+                                                    ,("title",title paste)]
+  where pageWithErrors errs form submitted =
+          template "New paste" "new" [] $ Just $
+            newPasteHtml (Just (submitted,errs)) form
+
+-- | The HTML container/submitter/error displayer for the paste form.
+newPasteHtml :: Maybe (Bool,[String]) -> String -> H.Html
+newPasteHtml s form = do
+  case s of 
+    Just (True,errs@(_:_)) -> do
+      H.p ! A.class_ "errors" $ text "There were some problems with your input:"
+      H.ul . mconcat . map (H.li . H.text . pack) $ errs
+    _ -> mempty
+  H.form ! A.method "post" ! A.action "/new" $ do
+    H.preEscapedString form
+    H.input ! A.type_ "submit" ! A.value "Create Paste" ! A.class_ "submit"
+    H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
 
 -- | A friendly error page.
 errorPage :: MonadCGI m => String -> m CGIResult
 errorPage = CGI.output
 
--- | HTML representation of a pastes list.
-pastesHtml :: [Paste] -> H.Html
-pastesHtml = table . H.tbody . mconcat . map pasteRowHtml where
+-- | HTML of pastes list.
+pastesListHtml :: [Paste] -> H.Html
+pastesListHtml = H.ul . mconcat . map pasteLi where
+  pasteLi Paste{..} = H.li $ do H.a ! A.href (H.stringValue url) $ text title
+                                H.text " by "
+                                text author
+    where url = link "paste" [("pid",show pid),("title",title)]
+
+-- | HTML table representation of a pastes list.
+pastesHtmlTable :: [Paste] -> H.Html
+pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
   table tbody = H.table $ do thead; tbody
   thead = H.thead $ H.tr $ mconcat $ map (H.th . text) fields
   fields = ["Title","Author","Channel","Language"]
@@ -257,17 +291,19 @@ pastesHtml = table . H.tbody . mconcat . map pasteRowHtml where
     td $ maybe "-" langName language
     where td = H.td . H.text . pack
           url = link "paste" [("pid",show pid),("title",title)]
-  text = H.text . pack
 
--- | HTML representation of a paste.
-pasteHtml :: Paste -> H.Html
-pasteHtml paste@Paste{..} = do
-  H.style $ text highlightCSS
+-- | Paste info of a paste.
+pasteInfoHtml :: Paste -> H.Html
+pasteInfoHtml Paste{..} = 
   H.dl $ do def "Author" $ text author
             def "Channel" $ text $ maybe "-" chanName channel
+  where def t dd = do H.dt $ text $ t ++ ":"; H.dd dd
+
+-- | Paste HTML of a paste.
+pastePasteHtml :: Paste -> H.Html
+pastePasteHtml paste@Paste{..} = do
+  H.style $ text highlightCSS
   H.div $ H.preEscapedString $ pasteHighlightedHtml paste
-  where def t dd = do H.dt $ text t; H.dd dd
-        text = H.text . pack
 
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
@@ -392,6 +428,12 @@ allPastes = do
   cl <- chansAndLangs
   pastesByQuery cl ""
 
+-- | Retrieve all pastes limit by a row count.
+allPastesLimitBy :: Integer -> DBM mark Session [Paste]
+allPastesLimitBy limit = do
+  cl <- chansAndLangs
+  pastesByQuery cl $ "ORDER BY id ASC LIMIT " ++ show limit
+
 -- | Retrieve all channels.
 allChannels :: DBM mark Session [Channel]
 allChannels = DB.doQuery (DB.sql "select id,title from channel") makeChannel [] where
@@ -451,3 +493,11 @@ replaceUnless with p = map (\a -> if not (p a) then with else a)
 -- | Remove duplicate subsequent elements of a list.
 nubseq :: Eq a => [a] -> [a]
 nubseq = map head . group
+
+-- | Convert a lazy bytestring to a strict bytestring.
+l2s :: L.ByteString -> B.ByteString
+l2s  = B.concat . L.toChunks
+
+-- | Make a HTML text object.
+text :: String -> H.Html
+text = H.text . pack

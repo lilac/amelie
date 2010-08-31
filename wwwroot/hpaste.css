@@ -1,0 +1,87 @@
+body { font-family: 'DejaVu Sans', sans-serif; font-size:14px; }
+img { border:0; }
+
+/* Main layout */
+.hpaste-wrap { padding:20px; }
+table.hpaste-columns { clear:both;padding-top:20px; }
+.hpaste-main-section { clear:both;padding-top:20px; }
+div.hpaste-info,td.hpaste-column,.hpaste-section { border:2px solid #eee; border-radius:5px;-moz-border-radius:5px; }
+div.hpaste-info { background:#453d5b; border: 2px solid #a9a0d2; color:white}
+td.hpaste-latest { background:#453d5b; border: 2px solid #a9a0d2; color:white}
+.hpaste-logo { display:block; float:left }
+.hpaste-nav { float:right }
+.hpaste-button {
+    background:#616161; color:#eee; padding:0.4em 0.4em 0.4em 0.4em;
+    border-radius:0.4em;
+    -moz-border-radius:5px;
+    text-decoration:none;
+}
+.hpaste-button:hover { background:#444; }
+.hpaste-content { clear:both; }
+
+/* Create new paste */
+.hpaste-create-new-paste,td.hpaste-create { 
+}
+.hpaste-create-new-paste label {
+    float:left; clear:both; width:120px; 
+    margin-left: 10px;
+}
+.hpaste-create-new-paste * + * + * { margin-top:10px; }
+.hpaste-create-new-paste input,.hpaste-create-new-paste textarea,
+.hpaste-create-new-paste select { float:left }
+.hpaste-create-new-paste textarea {
+    clear:both;
+    width:100%;height:300px
+}
+form input[type=text],
+form textarea {
+    -moz-border-radius:2px 2px; border-radius: 2px 2px;
+    background: #fff url(input-bg.png) no-repeat; border:1px
+    solid #BBBBBB; padding:3px 4px;
+}
+
+/* Latest pastes */
+.hpaste-latest-pastes { }
+h1,h2 { font-size:14px; margin:0; padding:10px 10px 20px 10px; font-weight:normal;
+font-weight:bold;   }
+.hpaste-latest-pastes h { font-weight:bold; }
+.hpaste-latest-pastes a { color:#8ae0c2; text-decoration:none  }
+
+.hpaste-latest-pastes-wrap { padding:0 10px 10px 10px; } 
+.hpaste-latest-pastes table { width:100% }
+.hpaste-latest-pastes th { text-align:left; }
+.hpaste-latest-pastes tbody tr { background: #2d2542 }
+.hpaste-latest-pastes ul { margin-top:0;padding-top:0;margin-left:10px;padding-left:0;}
+.hpaste-latest-pastes li { margin-bottom:10px; list-style-type:none; }
+.hpaste-new-paste-wrap { padding: 0 20px 0 10px; }
+.hpaste-create-new-paste .submit {
+    clear:left; float:right; margin:10px -10px 10px 0 ;
+}
+
+/* A paste */
+.hpaste-paste { margin-top: 10px; padding:10px;}
+.sourceCode td.nums { color:#888; padding-right:10px; }
+.hpaste-info dl dt { padding-left: 10px; font-weight:bold; float:left; clear:left; min-width:100px; }
+.hpaste-info dl * + * + * { margin-top:10px; }
+.hpaste-info h1 { margin-bottom:0; padding-bottom: 10px; }
+
+
+.hpaste-paste label {
+    float:left; clear:both; width:120px; 
+    margin-left: 10px;
+}
+
+.hpaste-new ul { color:red; font-weight:bold; list-style-type:none }
+.hpaste-paste form * + * + * { margin-top:10px; }
+.hpaste-paste input,.hpaste-paste textarea,
+.hpaste-paste select { float:left }
+.hpaste-paste textarea {
+    clear:both;
+    width:90%;height:300px
+    
+}
+
+.hpaste-new h1 { margin-top:0;padding-top:10px;margin-bottom:0; padding-bottom: 20px; }
+.hpaste-paste .submit { clear:both; }
+.hpaste-new p.errors { color:red;font-weight:bold;padding-top:0;margin-top:0;
+                     padding-left:10px;}

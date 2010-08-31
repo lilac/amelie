@@ -1,3 +1,23 @@
-<h1>All pastes</h1>
-$INNER$
-
+<!-- I USED TABLES BECAUSE I HAVE BETTER THINGS TO BE DOING WITH -->
+<!-- MY TIME THAN READING ABOUT STUPID CSS HACKS. GET BACK TO ME -->
+<!-- WHEN IT'S AS EASY AS THIS. -->
+<table class="hpaste-columns" width="100%">
+  <tr>
+    <td class="hpaste-column hpaste-create" valign="top" width="70%">
+      <div class="hpaste-create-new-paste">
+        <h2>Create new paste</h2>
+        <div class="hpaste-new-paste-wrap">
+          <$NEW_PASTE_FORM$>
+        </div>
+    </td>
+    <td width="1%"></td>
+    <td class="hpaste-column hpaste-latest" valign="top" width="30%">
+      <div class="hpaste-latest-pastes">
+        <h2>Latest pastes</h2>
+        <div class="hpaste-latest-pastes-wrap">
+          <$LATEST_PASTES$>
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>
