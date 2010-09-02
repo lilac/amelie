@@ -116,18 +116,25 @@ div.hpaste-new-paste-form form li div {
 div.hpaste-new-paste-form form li div textarea {
     font-size: 12px;
     font-family: monospace;
-    height: 500px;
     margin-top:10px;
     clear: left;
     float: left;
     max-width: 700px;
     width: 100%;
 }
-div.hpaste-new-paste-form form .submit {
+div.hpaste-new-paste-form .submit {
     margin: 10px 0 10px 0;
     clear: both;
     float: left;
     padding: 5px 10px 5px 10px;
+}
+div.hpaste-create-new-paste {
+    position:relative;
+}
+div.hpaste-new-paste-form .top-right-submit {
+    position: absolute;
+    top: 0;
+    right: 10px;
 }
 
 /******************************************************************************

@@ -1,4 +1,5 @@
 $(document).ready(function(){
+  // Update created date on paste
   $('#created').each(function(){
     var created = $(this);
     var localDate = parseUTCToLocal(created.text());
@@ -6,6 +7,31 @@ $(document).ready(function(){
     setInterval(function(){
       created.text(formatDate(localDate,true,true));
     },1000);
+  });
+  // Resize paste box appropriately
+  $('div.hpaste-new-paste-form textarea').each(function(){
+    var textarea = $(this);
+    textarea.keydown(update_size);
+    var last = '';
+    function update_size(){
+      var str = textarea.val();
+      var lines = str.length - str.replace(/\n/g,'').length;
+      textarea.attr('rows',Math.min(70,Math.max(15,lines+1)));
+    }
+    setInterval(function(){
+      var str = textarea.val();
+      if (str != last) {
+        update_size();
+      }
+    },200);
+  });
+  // Create a copy of the submit button that is more convenient
+  // to press at the top
+  $('div.hpaste-new-paste-form .submit').each(function(){
+    var copy = $(this).clone();
+    var paste_form = $('div.hpaste-new-paste-form form');
+    copy.addClass('top-right-submit');
+    paste_form.append(copy);
   });
 });
 

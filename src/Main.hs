@@ -295,7 +295,7 @@ pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
     H.td $ H.a ! A.href (H.stringValue url) $ text title
     td author
     td $ maybe "-" chanName channel
-    td $ maybe "-" langName language
+    td $ maybe "-" langTitle language
     where td = H.td . H.text . pack
           url = link "paste" [("pid",show pid),("title",title)]
 
@@ -340,7 +340,7 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
     lookupChan cid' = find ((==cid').cid) chans
     makeChanChoice Channel{cid,chanName} = (cid,chanName)
   empty = [(0,"")]
-  pasteInput = X.plug Html.thediv $ XH.textarea (Just 30) (Just 50) Nothing
+  pasteInput = X.plug Html.thediv $ XH.textarea (Just 10) (Just 50) Nothing
   clean = filter (/='\r') -- For some reason highlighting-kate counts \r\n as 2 lines.
   nempty = not . null
   we = const True
