@@ -302,7 +302,7 @@ pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
 -- | Paste info of a paste.
 pasteInfoHtml :: Paste -> H.Html
 pasteInfoHtml Paste{..} = 
-  H.li $ do def "Author" $ text author
+  H.ul $ do def "Author" $ text author
             def "Channel" $ text $ maybe "-" chanName channel
             def "Created" $ H.span ! A.id "created" $ text $ format created
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd

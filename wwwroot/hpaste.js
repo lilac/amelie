@@ -33,6 +33,16 @@ $(document).ready(function(){
     copy.addClass('top-right-submit');
     paste_form.append(copy);
   });
+  // Resize code container to fit containing code
+  var codeWidth = $('.sourceCode').width();
+  var container = $('.hpaste-paste');
+  var oldWidth = container.width();
+  var diff = codeWidth - oldWidth;
+  if (diff > 0) {
+    container.width(codeWidth);
+    $('.hpaste-wrap').width(codeWidth);
+    $('.hpaste-info').width(codeWidth);
+  }
 });
 
 function parseUTCToLocal(str){
