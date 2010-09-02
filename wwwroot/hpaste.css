@@ -114,6 +114,8 @@ div.hpaste-new-paste-form form li div {
     padding: 0 5px 0 0;
 }
 div.hpaste-new-paste-form form li div textarea {
+    font-size: 12px;
+    font-family: monospace;
     height: 500px;
     margin-top:10px;
     clear: left;
