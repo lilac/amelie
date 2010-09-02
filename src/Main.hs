@@ -4,7 +4,6 @@
              OverloadedStrings #-}
 module Main where
 
-
 import           Control.Applicative            (Applicative)
 import           Control.Applicative            (pure,(<$>),(<*>),(*>))
 import           Control.Applicative.Error      (Failing(..))
@@ -22,13 +21,12 @@ import qualified Data.ByteString.Lazy           as L (ByteString)
 import qualified Data.ByteString.Lazy           as L (toChunks,fromChunks)
 import           Data.Char                      (toLower,isDigit,isLetter,toUpper)
 import           Data.Data                      (Data,Typeable)
-import           Data.List                      (find,nub,intercalate,group,foldl')
+import           Data.List                      (find,nub,intercalate,foldl')
 import           Data.Maybe                     (listToMaybe,isJust)
 import           Data.Monoid                    (mconcat,mempty)
 import           Data.Time
 import           System.Directory               (doesFileExist)
 import           System.Locale                  (defaultTimeLocale)
-
 
 import           Data.ByteString.Search         (replace)
 import           Data.ConfigFile                hiding (content)
@@ -102,11 +100,13 @@ data Config =
          , templateDir   :: FilePath -- ^ Template directory.
          } deriving (Show)
 
+-- | Site database/configuration state.
 data State =
   State { dbsess :: ConnectA Session 
         , config :: Config
         }
 
+-- | Our web/database transformer.
 newtype SCGI a = SCGI { runSCGI :: StateT State (CGIT IO) a }
  deriving (Monad,Functor,MonadState State,MonadCGI,MonadIO)
 instance Monad m => MonadCGI (StateT State (CGIT m)) where
