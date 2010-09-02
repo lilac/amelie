@@ -4,6 +4,7 @@
              OverloadedStrings #-}
 module Main where
 
+
 import           Control.Applicative            (Applicative)
 import           Control.Applicative            (pure,(<$>),(<*>),(*>))
 import           Control.Applicative.Error      (Failing(..))
@@ -24,12 +25,16 @@ import           Data.Data                      (Data,Typeable)
 import           Data.List                      (find,nub,intercalate,group,foldl')
 import           Data.Maybe                     (listToMaybe,isJust)
 import           Data.Monoid                    (mconcat,mempty)
+import           Data.Time
 import           System.Directory               (doesFileExist)
+import           System.Locale                  (defaultTimeLocale)
+
 
 import           Data.ByteString.Search         (replace)
 import           Data.ConfigFile                hiding (content)
 import           Data.List.Split                (splitWhen)
 import           Data.Text                      (pack)
+import           Data.Time.Instances            ()
 import           Database.PostgreSQL.Enumerator (DBM,Session,IsolationLevel(..),ConnectA)
 import qualified Database.PostgreSQL.Enumerator as DB
 import           Network.CGI                    (CGIResult,CGIT,CGI)
@@ -50,14 +55,15 @@ import qualified Text.XHtml.Strict.Formlets     as XH
 
 -- | A paste.
 data Paste =
-  Paste { pid      :: Int            -- ^ Database entity id.
-        , title    :: Title          -- ^ Title of the paste (limited to 512~).
-        , author   :: Author         -- ^ Author(s) of the paste.
-        , language :: Maybe Language -- ^ Language (if any) of the paste.
-        , channel  :: Maybe Channel  -- ^ Associated IRC channel (if any).
-        , content  :: Content        -- ^ Raw content of the paste.
-        , tags     :: [Tag]          -- ^ Tags/keywords for the paste.
-        } deriving (Typeable,Data,Read,Show)
+  Paste { pid      :: Int             -- ^ Database entity id.
+        , title    :: Title           -- ^ Title of the paste (limited to 512~).
+        , author   :: Author          -- ^ Author(s) of the paste.
+        , language :: Maybe Language  -- ^ Language (if any) of the paste.
+        , channel  :: Maybe Channel   -- ^ Associated IRC channel (if any).
+        , content  :: Content         -- ^ Raw content of the paste.
+        , tags     :: [Tag]           -- ^ Tags/keywords for the paste.
+        , created  :: Maybe UTCTime   -- ^ When the paste was created.
+        } deriving (Typeable,Data,Show)
 
 -- | Title of the paste/thing.
 type Title = String
@@ -158,7 +164,7 @@ rules = [("paste",rewritePaste)] where
     [("pid",pid')]                 -> slashParts [name,pid']
     _ -> rewriteBasic name params
   -- | Normalize a string.
-  norm = map toLower . nubseq . replaceUnless '_' valid
+  norm = map toLower . replaceUnless '_' valid
   valid c = isDigit c || isLetter c || any (==c) "_"
 
 -- | Join a list of string parts into a slash-separated string.
@@ -199,6 +205,7 @@ template title' name ps inner = do
             Just in' -> [("inner",l2s $renderHtml in')]
             Nothing -> []
 
+-- | Fill a template's parameters.
 fillTemplate :: [(String,B.ByteString)] -> B.ByteString -> L.ByteString
 fillTemplate xs str = L.fromChunks . return $ foldl' rep str xs where
   rep acc (this,with) = l2s $ replace this' with acc where
@@ -297,7 +304,9 @@ pasteInfoHtml :: Paste -> H.Html
 pasteInfoHtml Paste{..} = 
   H.dl $ do def "Author" $ text author
             def "Channel" $ text $ maybe "-" chanName channel
+            def "Created" $ H.span ! A.id "created" $ text $ format created
   where def t dd = do H.dt $ text $ t ++ ":"; H.dd dd
+        format = maybe "" $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
 
 -- | Paste HTML of a paste.
 pastePasteHtml :: Paste -> H.Html
@@ -322,12 +331,14 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
                <*> label "Channel"  we chanInput
                <*> label "Paste"    nempty (clean <$> pasteInput)
                <*> pure []
-  langInput = lookupLang <$> XH.select [] (map makeLangChoice langs) Nothing where
+               <*> pure Nothing
+  langInput = lookupLang <$> XH.select [] (empty ++ map makeLangChoice langs) Nothing where
     lookupLang lid' = find ((==lid').lid) langs
     makeLangChoice Language{lid,langTitle} = (lid,langTitle)
-  chanInput = lookupChan <$> XH.select [] (map makeChanChoice chans) Nothing where
+  chanInput = lookupChan <$> XH.select [] (empty ++ map makeChanChoice chans) Nothing where
     lookupChan cid' = find ((==cid').cid) chans
     makeChanChoice Channel{cid,chanName} = (cid,chanName)
+  empty = [(0,"")]
   pasteInput = XH.textarea (Just 30) (Just 50) Nothing
   clean = filter (/='\r') -- For some reason highlighting-kate counts \r\n as 2 lines.
   nempty = not . null
@@ -436,13 +447,15 @@ allPastesLimitBy limit = do
 
 -- | Retrieve all channels.
 allChannels :: DBM mark Session [Channel]
-allChannels = DB.doQuery (DB.sql "select id,title from channel") makeChannel [] where
+allChannels = DB.doQuery (DB.sql q) makeChannel [] where
+  q = "select id,title from channel order by title desc"
   makeChannel cid' chanName' xs = DB.result' (chan:xs) where
     chan = Channel { chanName = chanName', cid = cid' }
 
 -- | Retrieve all languages.
 allLanguages :: DBM mark Session [Language]
-allLanguages = DB.doQuery (DB.sql "select id,name,title from language") makeLanguage [] where
+allLanguages = DB.doQuery (DB.sql q) makeLanguage [] where
+  q = "select id,name,title from language order by title desc"
   makeLanguage lid' langName' langTitle' xs = DB.result' (lang:xs) where
     lang = Language { langName = langName', lid = lid', langTitle = langTitle' }
 
@@ -474,8 +487,8 @@ pasteById pid' cl = listToMaybe <$> pastesByQuery cl ("where id = " ++ show pid'
 pastesByQuery :: ChansAndLangs -> String -> DBM mark Session [Paste]
 pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
   query = "select " ++ fields ++ " from paste " ++ cond
-  fields = "id,title,content,tags,author,language,channel"
-  makePaste pid' title' content' tags' author' lang' chan' xs =
+  fields = "id,title,content,tags,author,language,channel,created at time zone 'utc'"
+  makePaste pid' title' content' tags' author' lang' chan' created' xs =
     DB.result' (paste:xs) where
       paste = Paste { pid = pid'
                     , title    = title'
@@ -484,15 +497,12 @@ pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
                     , author   = author'
                     , language = lang' >>= \lid' -> find ((==lid').lid) langs
                     , channel  = chan' >>= \cid' -> find ((==cid').cid) chans
+                    , created  = Just created'
                     }
 
 -- | Replace elements of a list with a value, if a predicate is satisfied.
 replaceUnless :: a -> (a -> Bool) -> [a] -> [a]
 replaceUnless with p = map (\a -> if not (p a) then with else a)
-
--- | Remove duplicate subsequent elements of a list.
-nubseq :: Eq a => [a] -> [a]
-nubseq = map head . group
 
 -- | Convert a lazy bytestring to a strict bytestring.
 l2s :: L.ByteString -> B.ByteString
