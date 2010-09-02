@@ -1,20 +1,12 @@
-<table class="hpaste-columns" width="100%">
-  <tr>
-    <td class="hpaste-column hpaste-create" valign="top" width="70%">
-      <div class="hpaste-create-new-paste">
-        <h2>Create new paste</h2>
-        <div class="hpaste-new-paste-wrap">
-          <$NEW_PASTE_FORM$>
-        </div>
-    </td>
-    <td width="1%"></td>
-    <td class="hpaste-column hpaste-latest" valign="top" width="30%">
-      <div class="hpaste-latest-pastes">
-        <h2>Latest pastes</h2>
-        <div class="hpaste-latest-pastes-wrap">
-          <$LATEST_PASTES$>
-        </div>
-      </div>
-    </td>
-  </tr>
-</table>
+<div class="hpaste-create-new-paste hpaste-white-section hpaste-vertically-adjacent">
+  <h2 class="hpaste-section-title">Create new paste</h2>
+  <div class="hpaste-new-paste-form">
+    <$NEW_PASTE_FORM$>
+    <div class="hpaste-clear"></div>
+  </div>
+</div>
+<div class="hpaste-latest-pastes hpaste-black-section hpaste-vertically-adjacent">
+  <h2 class="hpaste-section-title">Latest pastes</h2>
+  <$LATEST_PASTES$>
+  <div class="hpaste-clear"></div>
+</div>

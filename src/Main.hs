@@ -217,7 +217,7 @@ pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
 pastesPage = do
   pastes <- db $ allPastesLimitBy 20
   cl <- db chansAndLangs
-  let latestPastes = l2s $ renderHtml $ pastesListHtml pastes
+  let latestPastes = l2s $ renderHtml $ pastesHtmlTable pastes
       newPasteForm = l2s $ renderHtml $
                      newPasteHtml Nothing $ snd $ pasteForm cl []
   template "All Pastes" "pastes" 
@@ -302,10 +302,10 @@ pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
 -- | Paste info of a paste.
 pasteInfoHtml :: Paste -> H.Html
 pasteInfoHtml Paste{..} = 
-  H.dl $ do def "Author" $ text author
+  H.li $ do def "Author" $ text author
             def "Channel" $ text $ maybe "-" chanName channel
             def "Created" $ H.span ! A.id "created" $ text $ format created
-  where def t dd = do H.dt $ text $ t ++ ":"; H.dd dd
+  where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         format = maybe "" $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
 
 -- | Paste HTML of a paste.
@@ -324,14 +324,15 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
   resultAndHtml = (,Html.renderHtmlFragment html) <$> run
   (run,html,_) = X.runFormState env form
   env = map (second Left) inputs
-  form = Paste <$> pure 0
-               <*> label "Title"    nempty (XH.input Nothing)
-               <*> label "Author"   nempty (XH.input Nothing)
-               <*> label "Language" we langInput
-               <*> label "Channel"  we chanInput
-               <*> label "Paste"    nempty (clean <$> pasteInput)
-               <*> pure []
-               <*> pure Nothing
+  form = X.plug Html.ulist $ 
+           Paste <$> pure 0
+                 <*> label "Title"    nempty (XH.input Nothing)
+                 <*> label "Author"   nempty (XH.input Nothing)
+                 <*> label "Language" we langInput
+                 <*> label "Channel"  we chanInput
+                 <*> label "Paste"    nempty (clean <$> pasteInput)
+                 <*> pure []
+                 <*> pure Nothing
   langInput = lookupLang <$> XH.select [] (empty ++ map makeLangChoice langs) Nothing where
     lookupLang lid' = find ((==lid').lid) langs
     makeLangChoice Language{lid,langTitle} = (lid,langTitle)
@@ -339,7 +340,7 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
     lookupChan cid' = find ((==cid').cid) chans
     makeChanChoice Channel{cid,chanName} = (cid,chanName)
   empty = [(0,"")]
-  pasteInput = XH.textarea (Just 30) (Just 50) Nothing
+  pasteInput = X.plug Html.thediv $ XH.textarea (Just 30) (Just 50) Nothing
   clean = filter (/='\r') -- For some reason highlighting-kate counts \r\n as 2 lines.
   nempty = not . null
   we = const True
@@ -347,8 +348,10 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
 -- | Label an input and apply a predicate to it for making inputs required.
 label :: (Show a,Monad m,Applicative m) =>
           String -> (a -> Bool) -> X.Form Html.Html m a -> X.Form Html.Html m a
-label caption p inp = XH.label (caption ++ ": ") *> (inp `X.check` X.ensure p msg) where
+label caption p inp = li $ label' *> (inp `X.check` X.ensure p msg) where
+  label' = XH.label (caption ++ ": ")
   msg = caption ++ ": must be provided"
+  li = X.plug Html.li
 
 -- | Highlighting CSS.
 highlightCSS :: String

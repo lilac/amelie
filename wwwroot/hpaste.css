@@ -1,87 +1,160 @@
-body { font-family: 'DejaVu Sans', sans-serif; font-size:14px; }
-img { border:0; }
+/******************************************************************************
+ * Standard element styles
+ */
+* { 
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: 'DejaVu Sans', sans-serif;
+}
+img { 
+    border:0; 
+}
+li {
+    list-style-type: none;
+}
+a { 
+    text-decoration: none; 
+}
 
-/* Main layout */
-.hpaste-wrap { padding:20px; }
-table.hpaste-columns { clear:both;padding-top:20px; }
-.hpaste-main-section { clear:both;padding-top:20px; }
-div.hpaste-info,td.hpaste-column,.hpaste-section { border:2px solid #eee; border-radius:5px;-moz-border-radius:5px; }
-div.hpaste-info { background:#453d5b; border: 2px solid #a9a0d2; color:white}
-td.hpaste-latest { background:#453d5b; border: 2px solid #a9a0d2; color:white}
-.hpaste-logo { display:block; float:left }
-.hpaste-nav { float:right }
-.hpaste-button {
-    background:#616161; color:#eee; padding:0.4em 0.4em 0.4em 0.4em;
-    border-radius:0.4em;
-    -moz-border-radius:5px;
-    text-decoration:none;
+/******************************************************************************
+ * Side-wide layout
+ */
+div.hpaste-wrap { 
+    padding: 20px;
+    min-width: 500px;
+    max-width: 790px;
+    margin-left: auto;
+    margin-right: auto;
 }
-.hpaste-button:hover { background:#444; }
-.hpaste-content { clear:both; }
+div.hpaste-header + div.hpaste-content {
+    margin-top: 10px;
+}
+div.hpaste-vertically-adjacent + div.hpaste-vertically-adjacent {
+    margin-top: 10px;
+}
+div.hpaste-white-section {
+    border: 2px solid #eee;
+    border-radius: 5px;
+    -moz-border-radius: 5px;
+    padding: 10px;
+}
+div.hpaste-black-section {
+    background: #453d5b;
+    border: 2px solid #a9a0d2;
+    border-radius: 5px;
+    -moz-border-radius: 5px;
+    color: white;
+    padding: 10px;
+}
+div.hpaste-black-section a {
+    color: #8ae0c2
+}
 
-/* Create new paste */
-.hpaste-create-new-paste,td.hpaste-create { 
+/******************************************************************************
+ * Side-wide styles
+ */
+div.hpaste-white-section h2.hpaste-section-title {
+    color: #2d2542;
+    font-size: 1em;
+    padding: 0 0 20px 0;
 }
-.hpaste-create-new-paste label {
-    float:left; clear:both; width:120px; 
-    margin-left: 10px;
+div.hpaste-black-section h2.hpaste-section-title {
+    color: #fff;
+    font-size: 1em;
+    padding: 0 0 20px 0;
 }
-.hpaste-create-new-paste * + * + * { margin-top:10px; }
-.hpaste-create-new-paste input,.hpaste-create-new-paste textarea,
-.hpaste-create-new-paste select { float:left }
-.hpaste-create-new-paste textarea {
-    clear:both;
-    width:100%;height:300px
-}
-form input[type=text],
+div.hpaste-white-section form input[type=text],
 form textarea {
-    -moz-border-radius:2px 2px; border-radius: 2px 2px;
-    background: #fff url(input-bg.png) no-repeat; border:1px
-    solid #BBBBBB; padding:3px 4px;
+    -moz-border-radius: 2px 2px;
+    border-radius: 2px 2px;
+    background: #fff url(input-bg.png) no-repeat;
+    border:1px solid #BBBBBB;
+    padding:3px 4px;
+}
+div.hpaste-white-section form input[type=text],
+div.hpaste-white-section form textarea {
+    width: 200px;
+}
+div.hpaste-white-section form input[type=text]:focus,
+div.hpaste-white-section form textarea:focus {
+}
+div.hpaste-clear { 
+    clear: both;
 }
 
-/* Latest pastes */
-.hpaste-latest-pastes { }
-h1,h2 { font-size:14px; margin:0; padding:10px 10px 20px 10px; font-weight:normal;
-font-weight:bold;   }
-.hpaste-latest-pastes h { font-weight:bold; }
-.hpaste-latest-pastes a { color:#8ae0c2; text-decoration:none  }
-
-.hpaste-latest-pastes-wrap { padding:0 10px 10px 10px; } 
-.hpaste-latest-pastes table { width:100% }
-.hpaste-latest-pastes th { text-align:left; }
-.hpaste-latest-pastes tbody tr { background: #2d2542 }
-.hpaste-latest-pastes ul { margin-top:0;padding-top:0;margin-left:10px;padding-left:0;}
-.hpaste-latest-pastes li { margin-bottom:10px; list-style-type:none; }
-.hpaste-new-paste-wrap { padding: 0 20px 0 10px; }
-.hpaste-create-new-paste .submit {
-    clear:left; float:right; margin:10px -10px 10px 0 ;
+/******************************************************************************
+ * pastes.html
+ */
+div.hpaste-latest-pastes table { 
+    width: 100%;
+    margin: 0 10px 10px 10px;
+}
+div.hpaste-latest-pastes table th {
+    text-align: left;
+    font-weight: bold;
 }
 
-/* A paste */
-.hpaste-paste { margin-top: 10px; padding:10px;}
-.sourceCode td.nums { color:#888; padding-right:10px; }
-.hpaste-info dl dt { padding-left: 10px; font-weight:bold; float:left; clear:left; min-width:100px; }
-.hpaste-info dl * + * + * { margin-top:10px; }
-.hpaste-info h1 { margin-bottom:0; padding-bottom: 10px; }
-
-
-.hpaste-paste label {
-    float:left; clear:both; width:120px; 
-    margin-left: 10px;
+/******************************************************************************
+ * pastes.html/new.html
+ */
+div.hpaste-new-paste-form form li {
+    margin-bottom: 10px;
+}
+div.hpaste-new-paste-form form {
+    padding: 10px;
+}
+div.hpaste-new-paste-form form li label {
+    display: block;
+    float: left;
+    width: 100px;
+}
+div.hpaste-new-paste-form form li div {
+    padding: 0 5px 0 0;
+}
+div.hpaste-new-paste-form form li div textarea {
+    height: 500px;
+    margin-top:10px;
+    clear: left;
+    float: left;
+    max-width: 700px;
+    width: 100%;
+}
+div.hpaste-new-paste-form form .submit {
+    margin: 10px 0 10px 0;
+    clear: both;
+    float: left;
+    padding: 5px 10px 5px 10px;
 }
 
-.hpaste-new ul { color:red; font-weight:bold; list-style-type:none }
-.hpaste-paste form * + * + * { margin-top:10px; }
-.hpaste-paste input,.hpaste-paste textarea,
-.hpaste-paste select { float:left }
-.hpaste-paste textarea {
-    clear:both;
-    width:90%;height:300px
-    
+/******************************************************************************
+ * new.html
+ */
+div.hpaste-new-paste-form p.errors {
+    color: red;
+    margin: 0 10px 10px 10px;
+}
+div.hpaste-new-paste-form p.errors + ul {
+    color: red;
+    margin: 10px;
+}
+div.hpaste-new-paste-form p.errors + ul li {
+    line-height: 1.7em;
 }
 
-.hpaste-new h1 { margin-top:0;padding-top:10px;margin-bottom:0; padding-bottom: 20px; }
-.hpaste-paste .submit { clear:both; }
-.hpaste-new p.errors { color:red;font-weight:bold;padding-top:0;margin-top:0;
-                     padding-left:10px;}
+/******************************************************************************
+ * paste.html
+ */
+div.hpaste-info li {
+    line-height: 1.5em;
+}
+div.hpaste-info li strong {
+    font-weight: normal;
+    display: block;
+    float: left;
+    width: 100px;
+}
+div.hpaste-paste {
+}
+table.sourceCode .nums { color: #777; text-align: right; padding-right: 10px; }
