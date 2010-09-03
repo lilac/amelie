@@ -31,6 +31,7 @@ import           System.Locale                  (defaultTimeLocale)
 import           Data.ByteString.Search         (replace)
 import           Data.ConfigFile                hiding (content)
 import           Data.List.Split                (splitWhen)
+import qualified Data.String.Utils              as List (replace)
 import           Data.Text                      (pack)
 import           Data.Time.Instances            ()
 import           Database.PostgreSQL.Enumerator (DBM,Session,IsolationLevel(..),ConnectA)
@@ -315,7 +316,12 @@ pasteInfoHtml Paste{..} =
 pastePasteHtml :: Paste -> H.Html
 pastePasteHtml paste@Paste{..} = do
   H.style $ text highlightCSS
-  H.div $ H.preEscapedString $ pasteHighlightedHtml paste
+  case highlight of
+    Just html -> H.div $ H.preEscapedString $ html
+    Nothing   -> H.div $ H.code $ H.preEscapedString $ clean content
+  where highlight = pasteHighlightedHtml paste
+        clean = List.replace "\n" "<br>" .
+                List.replace "<" "&lt;" . List.replace ">" "gt;"
 
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
@@ -361,12 +367,12 @@ highlightCSS :: String
 highlightCSS = Kate.defaultHighlightingCss
 
 -- | Syntax highlight a paste.
-pasteHighlightedHtml :: Paste -> String
+pasteHighlightedHtml :: Paste -> Maybe String
 pasteHighlightedHtml Paste{content,language} =
   let langName' = maybe "" langName language
   in case Kate.highlightAs (map toLower langName') content of
-       Left _err -> content
-       Right slines -> show $
+       Left _err -> Nothing
+       Right slines -> Just $ show $
          Kate.formatAsXHtml [OptNumberLines,OptLineAnchors] langName' slines
 
 -- | Attempt to read the configuration file from a given file path.
