@@ -161,8 +161,8 @@ rewritable = isJust . flip lookup rules
 rules :: [(PageName,PageName -> [(String,String)] -> String)]
 rules = [("paste",rewritePaste)] where
   rewritePaste name params = case params of
-    [("pid",pid'),("title",title)] -> slashParts [name,pid',norm title]
-    [("pid",pid')]                 -> slashParts [name,pid']
+    [("pid",pid'),("title",title)] -> slashParts [pid',norm title]
+    [("pid",pid')]                 -> slashParts [pid']
     _ -> rewriteBasic name params
   -- | Normalize a string.
   norm = map toLower . replaceUnless '_' valid
