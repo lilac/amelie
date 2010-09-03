@@ -22,7 +22,7 @@ import qualified Data.ByteString.Lazy           as L (ByteString)
 import qualified Data.ByteString.Lazy           as L (toChunks,fromChunks)
 import           Data.Char                      (toLower,toUpper)
 import           Data.Data                      (Data,Typeable)
-import           Data.List                      (find,nub,intercalate,foldl')
+import           Data.List                      (find,nub,intercalate,foldl',union)
 import           Data.Maybe                     (listToMaybe,isJust,fromMaybe)
 import           Data.Monoid                    (mconcat,mempty)
 import           Data.Time
@@ -137,8 +137,10 @@ router :: SCGI CGIResult
 router = do
   def <- gets $ defaultPage . config
   url <- (\n -> if null n then def else n) . dropWhile (=='/') <$> CGI.scriptName
+  inputs <- CGI.getInputs
   let name = takeWhile (/='/') url
-      params = assocs . splitWhen (=='/') . drop 1 . dropWhile (/='/') $ url
+      urlParams = assocs . splitWhen (=='/') . drop 1 . dropWhile (/='/') $ url
+      params = inputs `union` urlParams
       assocs x = map snd . filter (odd' . fst) . zip [1..] . zip x . tail $ x
         where odd' = odd :: Integer -> Bool
       cls = (db chansAndLangs >>=)
