@@ -3,3 +3,4 @@ httpd/*.log
 httpd/*.pid
 *.hi
 *.o
+amelie.conf

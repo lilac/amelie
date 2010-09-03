@@ -4,7 +4,10 @@ user = amelie
 password = amelie
 
 [PRESENTATION]
-title = Amelie Paste Site
+title = hpaste
 perpage = 30
 defaultpage = pastes
 templates = templates
+
+[THIRDPARTY]
+analytics = 
