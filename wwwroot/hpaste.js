@@ -3,8 +3,9 @@ String.prototype.trim = function(){
 };
 
 $(document).ready(function(){
-  // Update created date on paste
-  update_created_date();
+  // Update dates to show local times
+  update_dates('#created');
+  update_dates('.utctime',true);
   // Resize paste box appropriately
   resize_text_box();
   // Create a copy of the submit button that is more convenient
@@ -30,14 +31,14 @@ function display_switch(){
   });
 };
 
-function update_created_date(){
-  $('#created').each(function(){
+function update_dates(selector,onlyago){
+  $(selector).each(function(){
     var created = $(this);
     var localDate = parseUTCToLocal(created.text());
-    created.text(formatDate(localDate,true,true));
+    created.text(formatDate(localDate,true,true,onlyago));
     setInterval(function(){
-      created.text(formatDate(localDate,true,true));
-    },1000);
+      created.text(formatDate(localDate,true,true,onlyago));
+    },1000*30);
   });
 }
 
@@ -48,7 +49,8 @@ function parseUTCToLocal(str){
   return new Date(Date.UTC(m[0], m[1]-1, m[2], m[3], m[4], m[5]));
 };
 
-function formatDate(d,z,span) {
+function formatDate(d,z,span,onlyspan) {
+  if (onlyspan) return ago(d);
   var tz = '';
   if (z) {
     var m = d.toString().match(/\(([^\)]+)\)$/);

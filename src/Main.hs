@@ -317,12 +317,13 @@ pastesHtmlTable :: [Paste] -> H.Html
 pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
   table tbody = H.table $ do thead; tbody
   thead = H.thead $ H.tr $ mconcat $ map (H.th . text) fields
-  fields = ["Title","Author","Channel","Language"]
+  fields = ["Title","Author","When","Language","Channel"]
   pasteRowHtml Paste{..} = H.tr $ do
     H.td $ H.a ! A.href (H.stringValue url) $ text title
     td author
-    td $ maybe "-" chanName channel
+    maybe mempty ((H.td ! A.class_ "utctime") . text . formatUTC) created
     td $ maybe "-" langTitle language
+    td $ maybe "-" chanName channel
     where td = H.td . H.text . pack
           url = link "paste" [("pid",show pid),("title",title)]
 
@@ -332,14 +333,17 @@ pasteInfoHtml lang cl paste@Paste{..} =
   H.ul $ do def "Paste" $ href (self "paste") $ text $ "#" ++ show pid
             def "Author" $ text author
             maybe mempty (def "Channel" . text . chanName) channel
-            def "Created" $ H.span ! aid "created" $ text $ format created
+            def "Created" $ H.span ! aid "created" $ text $ creationDate
             def "Raw" $ href (self "raw") $ text "View raw file"
             def "Language" $ displayLangSwitcher lang cl paste
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         aid = A.id -- To appease hlint, for now.
-        format = maybe "" $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
         self typ = link typ [("pid",show pid),("title",title)]
         href l c = H.a ! A.href (H.stringValue l) $ c
+        creationDate = fromMaybe "" $ fmap formatUTC created
+
+formatUTC :: UTCTime -> String
+formatUTC = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
 
 -- | Change the display language of this paste.
 displayLangSwitcher :: Maybe Language -> ChansAndLangs -> Paste -> H.Html
