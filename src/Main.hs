@@ -326,13 +326,15 @@ pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
 -- | Paste info of a paste.
 pasteInfoHtml :: Paste -> H.Html
 pasteInfoHtml Paste{..} = 
-  H.ul $ do def "Author" $ text author
-            def "Channel" $ text $ maybe "-" chanName channel
+  H.ul $ do def "Paste" $ href (self "paste") $ text $ "#" ++ show pid
+            def "Author" $ text author
+            maybe mempty (def "Channel" . text . chanName) channel
             def "Created" $ H.span ! A.id "created" $ text $ format created
-            def "Raw" $ H.a ! A.href (H.stringValue raw) $ text "View raw file"
+            def "Raw" $ href (self "raw") $ text "View raw file"
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         format = maybe "" $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
-        raw = link "raw" [("pid",show pid),("title",title)]
+        self typ = link typ [("pid",show pid),("title",title)]
+        href l c = H.a ! A.href (H.stringValue l) $ c
 
 -- | Paste HTML of a paste.
 pastePasteHtml :: Paste -> Maybe String -> H.Html
