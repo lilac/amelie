@@ -98,6 +98,7 @@ data Config =
          , pastesPerPage :: Integer  -- ^ Results per page.
          , defaultPage   :: String   -- ^ Default page to show.
          , templateDir   :: FilePath -- ^ Template directory.
+         , analytics     :: String   -- ^ Analytics profile id.
          } deriving (Show)
 
 -- | Site database/configuration state.
@@ -187,6 +188,7 @@ template :: (MonadState State m,MonadCGI m,MonadIO m)
             -> m CGIResult
 template title' name ps inner = do
   tempDir <- gets $ templateDir . config
+  analytics <- gets $ analytics . config
   let (temp,page) = (tempDir </> "template.html",tempDir </> name ++ ".html")
   exists <- liftIO $ (&&) <$> doesFileExist temp 
             <*> doesFileExist page
@@ -195,7 +197,8 @@ template title' name ps inner = do
              mainTempl <- liftIO $ B.readFile temp
              let params = [("page",templ)
                           ,("name",B.pack name)
-                          ,("title",B.pack title')]
+                          ,("title",B.pack title')
+                          ,("analytics",B.pack analytics)]
                           ++ ps ++ renderedHtml
              CGI.outputFPS $ fillTemplate params mainTempl
      else maybe (errorPage $ "No template for " ++ name) 
@@ -381,11 +384,13 @@ getConfig config = do
   [host,user,pass] <- mapM (get c "POSTGRESQL") ["host","user","password"]
   [title,perpage,def,temps]  <- mapM (get c "PRESENTATION")
                                      ["title","perpage","defaultpage","templates"]
+  [analytics] <- mapM (get c "THIRDPARTY") ["analytics"]
   return Config { dbconn        = (host,user,pass) 
                 , siteTitle     = title
                 , pastesPerPage = read perpage
                 , defaultPage   = def
                 , templateDir   = temps
+                , analytics     = analytics
                 }
 
 -- | With a connection to the database.
