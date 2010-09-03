@@ -84,7 +84,7 @@ data Language =
   Language { langName :: String  -- ^ Programming language name.
            , langTitle :: String -- ^ Human friendly (i.e. capitalised) name.
            , lid      :: Int     -- ^ Database entity id.
-           } deriving (Typeable,Data,Read,Show)
+           } deriving (Typeable,Data,Read,Show,Eq)
 
 -- | The channel associated with the paste.
 data Channel = 
@@ -242,20 +242,21 @@ pastesPage = do
 
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
-pastePage = asPastePage $ \ps paste@Paste{title} ->
-  let info = l2s $ renderHtml $ pasteInfoHtml paste
-      paste' = l2s $ renderHtml $ pastePasteHtml paste $ lookup "lang" ps
+pastePage = asPastePage $ \ps cl@(_,langs) paste@Paste{title} ->
+  let lang = lookup "lang" ps >>= \name -> find ((==name) . langName) langs
+      info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
+      paste' = l2s $ renderHtml $ pastePasteHtml paste lang
   in template title "paste" [("info",info),("paste",paste')] Nothing
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
-rawPastePage = asPastePage $ \_ Paste{content} -> do
+rawPastePage = asPastePage $ \_ _ Paste{content} -> do
   CGI.setHeader "Content-Type" "text/plain; charset=UTF-8"
   CGI.output $ encodeString content
 
 -- | A CGI page to show a paste.
 asPastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
-             => ([(String,String)] -> Paste -> m CGIResult)
+             => ([(String,String)] -> ChansAndLangs -> Paste -> m CGIResult)
              -> [(String,String)]             
              -> ChansAndLangs
              -> m CGIResult
@@ -266,7 +267,7 @@ asPastePage run ps cl =
         result <- db $ pasteById pid'' cl
         case result of
           Nothing    -> noSuchPaste
-          Just paste -> run ps paste
+          Just paste -> run ps cl paste
   where noSuchPaste = errorPage "Unknown paste."
         noPasteGiven = errorPage "No paste given."
 
@@ -326,20 +327,37 @@ pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
           url = link "paste" [("pid",show pid),("title",title)]
 
 -- | Paste info of a paste.
-pasteInfoHtml :: Paste -> H.Html
-pasteInfoHtml Paste{..} = 
+pasteInfoHtml :: Maybe Language -> ChansAndLangs -> Paste -> H.Html
+pasteInfoHtml lang cl paste@Paste{..} = 
   H.ul $ do def "Paste" $ href (self "paste") $ text $ "#" ++ show pid
             def "Author" $ text author
             maybe mempty (def "Channel" . text . chanName) channel
-            def "Created" $ H.span ! A.id "created" $ text $ format created
+            def "Created" $ H.span ! aid "created" $ text $ format created
             def "Raw" $ href (self "raw") $ text "View raw file"
+            def "Language" $ displayLangSwitcher lang cl paste
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
+        aid = A.id -- To appease hlint, for now.
         format = maybe "" $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
         self typ = link typ [("pid",show pid),("title",title)]
         href l c = H.a ! A.href (H.stringValue l) $ c
 
+-- | Change the display language of this paste.
+displayLangSwitcher :: Maybe Language -> ChansAndLangs -> Paste -> H.Html
+displayLangSwitcher paramLang (_,langs) Paste{title,pid,language} =
+  H.form ! A.class_ "lang-switcher" ! A.action (H.stringValue self) $ do
+    H.input ! A.type_ "hidden" ! A.name "pid" ! attr A.value (show pid)
+    H.select ! A.name "lang" $ mconcat $ empty : map showLang langs
+    H.input ! A.type_ "submit" ! A.value "Change display"
+  where self = link "paste" [("pid",show pid),("title",title)]
+        attr f a = f (H.stringValue a)
+        empty = H.option ! A.value "" $ text ""
+        showLang lang'@Language{..} =
+          let opt = H.option ! attr A.value langName $ text langTitle
+          in if lang == Just lang' then opt ! A.selected "selected" else opt
+        lang = paramLang `mplus` language
+
 -- | Paste HTML of a paste.
-pastePasteHtml :: Paste -> Maybe String -> H.Html
+pastePasteHtml :: Paste -> Maybe Language -> H.Html
 pastePasteHtml paste@Paste{..} lang = do
   H.style $ text highlightCSS
   H.div $ H.preEscapedString $ fromMaybe (plain $ Html.thecode << content) $ 
@@ -388,9 +406,9 @@ highlightCSS :: String
 highlightCSS = Kate.defaultHighlightingCss
 
 -- | Syntax highlight a paste.
-pasteHighlightedHtml :: Paste -> Maybe String -> Maybe String
+pasteHighlightedHtml :: Paste -> Maybe Language -> Maybe String
 pasteHighlightedHtml Paste{content,language} lang =
-  let langName' = fromMaybe "" $ lang `mplus` fmap langName language
+  let langName' = fromMaybe "" $ fmap langName $ lang `mplus` language
   in case Kate.highlightAs (map toLower langName') content of
        Left _err -> Nothing
        Right slines -> Just $ show $
