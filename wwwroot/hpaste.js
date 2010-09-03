@@ -16,7 +16,19 @@ $(document).ready(function(){
   $('.hpaste-new-paste-form textarea').after($('<div class="hpaste-clear"></div>'));
   // Form validation
   form_validation();
+  // Dynamic display switcher
+  display_switch();
 });
+
+function display_switch(){
+  $('.lang-switcher').each(function(){
+    var s = $(this);
+    s.find('input[type=submit]').hide();
+    s.find('select').change(function(){
+      s.submit();
+    });
+  });
+};
 
 function update_created_date(){
   $('#created').each(function(){
