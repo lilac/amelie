@@ -170,14 +170,18 @@ div.hpaste-new-paste-form p.errors + ul li {
 /******************************************************************************
  * paste.html
  */
+div.hpaste-black-section h2.hpaste-section-title {
+    padding: 0 0 5px 0;
+}
 div.hpaste-info li {
     line-height: 1.5em;
+    font-size:0.8em;
 }
 div.hpaste-info li strong {
     font-weight: normal;
     display: block;
     float: left;
-    width: 100px;
+    width: 5em;
 }
 div.hpaste-paste {
 }
