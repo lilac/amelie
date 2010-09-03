@@ -141,6 +141,7 @@ router = do
       cls = (db chansAndLangs >>=)
   case name of
     "paste" -> cls $ pastePage params
+    "raw"   -> cls $ rawPastePage params
     "new"   -> cls newPastePage
     _       -> pastesPage
 
@@ -160,10 +161,14 @@ rewritable = isJust . flip lookup rules
 
 -- | Rewrite rules for outgoing links.
 rules :: [(PageName,PageName -> [(String,String)] -> String)]
-rules = [("paste",rewritePaste)] where
+rules = [("paste",rewritePaste),("raw",rewritePaste)] where
   rewritePaste name params = case params of
-    [("pid",pid'),("title",title)] -> slashParts [pid',norm title]
-    [("pid",pid')]                 -> slashParts [pid']
+    [("pid",pid'),("title",title)] 
+      | name == "raw"   -> slashParts [name,pid',norm title]
+      | name == "paste" -> slashParts [pid',norm title]
+    [("pid",pid')]                 
+      | name == "raw"   -> slashParts [name,pid']
+      | name == "paste" -> slashParts [pid']
     _ -> rewriteBasic name params
   -- | Normalize a string.
   norm = map toLower . replaceUnless '_' valid
@@ -229,22 +234,33 @@ pastesPage = do
            ,("new_paste_form",newPasteForm)]
            Nothing
 
+-- | Render a pretty highlighted paste with info.
+pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
+pastePage = asPastePage $ \paste@Paste{title} ->
+  let info = l2s $ renderHtml $ pasteInfoHtml paste
+      paste' = l2s $ renderHtml $ pastePasteHtml paste
+  in template title "paste" [("info",info),("paste",paste')] Nothing
+
+-- | Render a raw paste.
+rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
+rawPastePage = asPastePage $ \Paste{content} -> do
+  CGI.setHeader "Content-Type" "text/plain"
+  CGI.output content
+
 -- | A CGI page to show a paste.
-pastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
-             => [(String,String)]             
+asPastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
+             => (Paste -> m CGIResult)
+             -> [(String,String)]             
              -> ChansAndLangs
              -> m CGIResult
-pastePage ps cl =
+asPastePage run ps cl =
     case lookup "pid" ps >>= readMay of
       Nothing    -> noPasteGiven
       Just pid'' -> do
         result <- db $ pasteById pid'' cl
         case result of
-          Nothing -> noSuchPaste
-          Just paste@Paste{title} ->
-            let info = l2s $ renderHtml $ pasteInfoHtml paste
-                paste' = l2s $ renderHtml $ pastePasteHtml paste
-            in template title "paste" [("info",info),("paste",paste')] Nothing
+          Nothing    -> noSuchPaste
+          Just paste -> run paste
   where noSuchPaste = errorPage "Unknown paste."
         noPasteGiven = errorPage "No paste given."
 
@@ -309,8 +325,10 @@ pasteInfoHtml Paste{..} =
   H.ul $ do def "Author" $ text author
             def "Channel" $ text $ maybe "-" chanName channel
             def "Created" $ H.span ! A.id "created" $ text $ format created
+            def "Raw" $ H.a ! A.href (H.stringValue raw) $ text "View raw file"
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         format = maybe "" $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
+        raw = link "raw" [("pid",show pid),("title",title)]
 
 -- | Paste HTML of a paste.
 pastePasteHtml :: Paste -> H.Html
