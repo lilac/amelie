@@ -4,6 +4,21 @@ String.prototype.trim = function(){
 
 $(document).ready(function(){
   // Update created date on paste
+  update_created_date();
+  // Resize paste box appropriately
+  resize_text_box();
+  // Create a copy of the submit button that is more convenient
+  // to press at the top
+  copy_submit_button();
+  // Resize code container to fit containing code
+  resize_code_container();
+  // Add a clear after the form textarea
+  $('.hpaste-new-paste-form textarea').after($('<div class="hpaste-clear"></div>'));
+  // Form validation
+  form_validation();
+});
+
+function update_created_date(){
   $('#created').each(function(){
     var created = $(this);
     var localDate = parseUTCToLocal(created.text());
@@ -12,79 +27,7 @@ $(document).ready(function(){
       created.text(formatDate(localDate,true,true));
     },1000);
   });
-  // Resize paste box appropriately
-  $('div.hpaste-new-paste-form textarea').each(function(){
-    var textarea = $(this);
-    textarea.keydown(update_size);
-    var last = '';
-    function update_size(){
-      var str = textarea.val();
-      var lines = str.length - str.replace(/\n/g,'').length;
-      textarea.attr('rows',Math.min(70,Math.max(15,lines+1)));
-    }
-    setInterval(function(){
-      var str = textarea.val();
-      if (str != last) {
-        update_size();
-      }
-    },200);
-  });
-  // Create a copy of the submit button that is more convenient
-  // to press at the top
-  $('div.hpaste-new-paste-form .submit').each(function(){
-    var copy = $(this).clone();
-    var paste_form = $('div.hpaste-new-paste-form form');
-    copy.addClass('top-right-submit');
-    paste_form.append(copy);
-  });
-  // Resize code container to fit containing code
-  var codeWidth = $('.sourceCode').width();
-  var container = $('.hpaste-paste');
-  var oldWidth = container.width();
-  var diff = codeWidth - oldWidth;
-  if (diff > 0) {
-    container.width(codeWidth);
-    $('.hpaste-wrap').width(codeWidth).css('max-width',codeWidth);
-    $('.hpaste-info').width(codeWidth);
-  }
-  // Add a clear after the form textarea
-  $('.hpaste-new-paste-form textarea').after($('<div class="hpaste-clear"></div>'));
-  // Form validation
-  function check(form_submitted){
-    var invalid = false;
-    var first_invalid;
-    var inputs = "*title,*author,language,channel,*paste".split(/,/g);
-    for (var i = 0; i < inputs.length; i++) {
-      var req = inputs[i].match(/\*/);
-      var x = 0;
-      $('.hpaste-new-paste-form').find('input,textarea,select').each(function(){
-        if (x == i) {
-          var input = $(this);
-          var li = input.parent();
-          if (i == 4) li = li.parent();
-          if (req && input.val().trim() == '') {
-            li.addClass('invalid-input');
-            invalid = true;
-            first_invalid = first_invalid || input;
-          } else {
-            li.removeClass('invalid-input');
-          }
-        } 
-        x++;
-      });
-    }
-    if (invalid && form_submitted) first_invalid.focus();
-    return !invalid;
-  }
-  $('.hpaste-new-paste-form').find('input,textarea,select').each(function(){
-    $(this).change(function(){ check(); });
-  });
-  var interval;
-  $('.hpaste-new-paste-form form').submit(function(){
-    if (!interval) interval = setInterval(check,1000);
-    return check(true);
-  });
-});
+}
 
 function parseUTCToLocal(str){
   var d = /^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})/;
@@ -141,3 +84,80 @@ var ago = (function(){
 
   return ago;
 })();
+
+function form_validation(){
+  function check(form_submitted){
+    var invalid = false;
+    var first_invalid;
+    var inputs = "*title,*author,language,channel,*paste".split(/,/g);
+    for (var i = 0; i < inputs.length; i++) {
+      var req = inputs[i].match(/\*/);
+      var x = 0;
+      $('.hpaste-new-paste-form').find('input,textarea,select').each(function(){
+        if (x == i) {
+          var input = $(this);
+          var li = input.parent();
+          if (i == 4) li = li.parent();
+          if (req && input.val().trim() == '') {
+            li.addClass('invalid-input');
+            invalid = true;
+            first_invalid = first_invalid || input;
+          } else {
+            li.removeClass('invalid-input');
+          }
+        } 
+        x++;
+      });
+    }
+    if (invalid && form_submitted) first_invalid.focus();
+    return !invalid;
+  }
+  $('.hpaste-new-paste-form').find('input,textarea,select').each(function(){
+    $(this).change(function(){ check(); });
+  });
+  var interval;
+  $('.hpaste-new-paste-form form').submit(function(){
+    if (!interval) interval = setInterval(check,1000);
+    return check(true);
+  });
+}
+
+function copy_submit_button(){
+  $('div.hpaste-new-paste-form .submit').each(function(){
+    var copy = $(this).clone();
+    var paste_form = $('div.hpaste-new-paste-form form');
+    copy.addClass('top-right-submit');
+    paste_form.append(copy);
+  });
+}
+
+function resize_text_box(){
+  $('div.hpaste-new-paste-form textarea').each(function(){
+    var textarea = $(this);
+    textarea.keydown(update_size);
+    var last = '';
+    function update_size(){
+      var str = textarea.val();
+      var lines = str.length - str.replace(/\n/g,'').length;
+      textarea.attr('rows',Math.min(70,Math.max(15,lines+1)));
+    }
+    setInterval(function(){
+      var str = textarea.val();
+      if (str != last) {
+        update_size();
+      }
+    },200);
+  });
+}
+
+function resize_code_container(){
+  var codeWidth = $('.sourceCode').width();
+  var container = $('.hpaste-paste');
+  var oldWidth = container.width();
+  var diff = codeWidth - oldWidth;
+  if (diff > 0) {
+    container.width(codeWidth);
+    $('.hpaste-wrap').width(codeWidth).css('max-width',codeWidth);
+    $('.hpaste-info').width(codeWidth);
+  }
+}
