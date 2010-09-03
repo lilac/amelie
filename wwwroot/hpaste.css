@@ -91,6 +91,14 @@ form li.invalid-input {
     border-radius:2px 2px;
     margin: 0 5px 0 5px;
 }
+div.hpaste-footer {
+    margin:10px;
+    font-size: 12px;
+    color:#aaa;
+}
+div.hpaste-footer a {
+    color: #2D2542;
+}
 
 /******************************************************************************
  * pastes.html
