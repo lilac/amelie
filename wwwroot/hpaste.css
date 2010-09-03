@@ -83,6 +83,14 @@ div.hpaste-white-section form textarea:focus {
 div.hpaste-clear { 
     clear: both;
 }
+form li {
+    padding: 5px;
+}
+form li.invalid-input {
+    background: #FFDFDF; border:1px solid #EFB3B3; -moz-border-radius:2px 2px; 
+    border-radius:2px 2px;
+    margin: 0 5px 0 5px;
+}
 
 /******************************************************************************
  * pastes.html
@@ -100,7 +108,7 @@ div.hpaste-latest-pastes table th {
  * pastes.html/new.html
  */
 div.hpaste-new-paste-form form li {
-    margin-bottom: 10px;
+    margin-bottom: 3px;
 }
 div.hpaste-new-paste-form form {
     padding: 0;
@@ -122,7 +130,7 @@ div.hpaste-new-paste-form form li div textarea {
     width: 100%;
 }
 div.hpaste-new-paste-form .submit {
-    margin: 10px 0 0 0;
+    margin: 15px 5px 5px 5px;
     clear: both;
     float: left;
     padding: 5px 10px 5px 10px;

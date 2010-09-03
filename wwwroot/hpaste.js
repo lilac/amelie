@@ -1,3 +1,7 @@
+String.prototype.trim = function(){
+  return this.replace(/^[ ]+/g,'').replace(/[ ]+$/g,'');
+};
+
 $(document).ready(function(){
   // Update created date on paste
   $('#created').each(function(){
@@ -43,6 +47,40 @@ $(document).ready(function(){
     $('.hpaste-wrap').width(codeWidth).css('max-width',codeWidth);
     $('.hpaste-info').width(codeWidth);
   }
+  // Add a clear after the form textarea
+  $('.hpaste-new-paste-form textarea').after($('<div class="hpaste-clear"></div>'));
+  // Form validation
+  function check(){
+    var invalid = false;
+    var inputs = "*title,*author,language,channel,*paste".split(/,/g);
+    for (var i = 0; i < inputs.length; i++) {
+      var req = inputs[i].match(/\*/);
+      var x = 0;
+      $('.hpaste-new-paste-form').find('input,textarea,select').each(function(){
+        if (x == i) {
+          var input = $(this);
+          var li = input.parent();
+          if (i == 4) li = li.parent();
+          if (req && input.val().trim() == '') {
+            li.addClass('invalid-input');
+            invalid = true;
+          } else {
+            li.removeClass('invalid-input');
+          }
+        } 
+        x++;
+      });
+    }
+    return !invalid;
+  }
+  $('.hpaste-new-paste-form').find('input,textarea,select').each(function(){
+    $(this).change(function(){ check(); });
+  });
+  var interval;
+  $('.hpaste-new-paste-form form').submit(function(){
+    if (!interval) interval = setInterval(check,1000);
+    return check();
+  });
 });
 
 function parseUTCToLocal(str){
