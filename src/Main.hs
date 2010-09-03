@@ -446,7 +446,7 @@ allPastes = do
 allPastesLimitBy :: Integer -> DBM mark Session [Paste]
 allPastesLimitBy limit = do
   cl <- chansAndLangs
-  pastesByQuery cl $ "ORDER BY id ASC LIMIT " ++ show limit
+  reverse <$> pastesByQuery cl (" ORDER BY id DESC LIMIT " ++ show limit)
 
 -- | Retrieve all channels.
 allChannels :: DBM mark Session [Channel]
