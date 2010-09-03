@@ -9,6 +9,7 @@ import           Control.Applicative            (pure,(<$>),(<*>),(*>))
 import           Control.Applicative.Error      (Failing(..))
 import           Control.Arrow                  (second,(***))
 import           Control.Monad                  (ap)
+import           Control.Monad                  (mplus)
 import           Control.Monad.Identity         (Identity)
 import           Control.Monad.Identity         (runIdentity)
 import           Control.Monad.State            (MonadState,StateT)
@@ -22,7 +23,7 @@ import qualified Data.ByteString.Lazy           as L (toChunks,fromChunks)
 import           Data.Char                      (toLower,toUpper)
 import           Data.Data                      (Data,Typeable)
 import           Data.List                      (find,nub,intercalate,foldl')
-import           Data.Maybe                     (listToMaybe,isJust)
+import           Data.Maybe                     (listToMaybe,isJust,fromMaybe)
 import           Data.Monoid                    (mconcat,mempty)
 import           Data.Time
 import           System.Directory               (doesFileExist)
@@ -239,20 +240,20 @@ pastesPage = do
 
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
-pastePage = asPastePage $ \paste@Paste{title} ->
+pastePage = asPastePage $ \ps paste@Paste{title} ->
   let info = l2s $ renderHtml $ pasteInfoHtml paste
-      paste' = l2s $ renderHtml $ pastePasteHtml paste
+      paste' = l2s $ renderHtml $ pastePasteHtml paste $ lookup "lang" ps
   in template title "paste" [("info",info),("paste",paste')] Nothing
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
-rawPastePage = asPastePage $ \Paste{content} -> do
+rawPastePage = asPastePage $ \_ Paste{content} -> do
   CGI.setHeader "Content-Type" "text/plain; charset=UTF-8"
   CGI.output $ encodeString content
 
 -- | A CGI page to show a paste.
 asPastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
-             => (Paste -> m CGIResult)
+             => ([(String,String)] -> Paste -> m CGIResult)
              -> [(String,String)]             
              -> ChansAndLangs
              -> m CGIResult
@@ -263,7 +264,7 @@ asPastePage run ps cl =
         result <- db $ pasteById pid'' cl
         case result of
           Nothing    -> noSuchPaste
-          Just paste -> run paste
+          Just paste -> run ps paste
   where noSuchPaste = errorPage "Unknown paste."
         noPasteGiven = errorPage "No paste given."
 
@@ -334,12 +335,11 @@ pasteInfoHtml Paste{..} =
         raw = link "raw" [("pid",show pid),("title",title)]
 
 -- | Paste HTML of a paste.
-pastePasteHtml :: Paste -> H.Html
-pastePasteHtml paste@Paste{..} = do
+pastePasteHtml :: Paste -> Maybe String -> H.Html
+pastePasteHtml paste@Paste{..} lang = do
   H.style $ text highlightCSS
-  H.div $ H.preEscapedString $ case pasteHighlightedHtml paste of
-    Just html -> html
-    Nothing   -> plain $ Html.thecode << content
+  H.div $ H.preEscapedString $ fromMaybe (plain $ Html.thecode << content) $ 
+    pasteHighlightedHtml paste lang
     where plain = List.replace "\n" "<br>" . Html.showHtmlFragment
 
 -- | An identity monad for running forms, with Applicative instance.
@@ -386,9 +386,9 @@ highlightCSS :: String
 highlightCSS = Kate.defaultHighlightingCss
 
 -- | Syntax highlight a paste.
-pasteHighlightedHtml :: Paste -> Maybe String
-pasteHighlightedHtml Paste{content,language} =
-  let langName' = maybe "" langName language
+pasteHighlightedHtml :: Paste -> Maybe String -> Maybe String
+pasteHighlightedHtml Paste{content,language} lang =
+  let langName' = fromMaybe "" $ lang `mplus` fmap langName language
   in case Kate.highlightAs (map toLower langName') content of
        Left _err -> Nothing
        Right slines -> Just $ show $
