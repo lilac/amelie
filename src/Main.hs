@@ -360,17 +360,15 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
            Paste <$> pure 0
                  <*> label "Title"    nempty (XH.input Nothing)
                  <*> label "Author"   nempty (XH.input Nothing)
-                 <*> label "Language" we langInput
-                 <*> label "Channel"  we chanInput
+                 <*> label "Language" we (select lid makeLangChoice langs)
+                 <*> label "Channel"  we (select cid makeChanChoice chans)
                  <*> label "Paste"    nempty (clean <$> pasteInput)
                  <*> pure []
                  <*> pure Nothing
-  langInput = lookupLang <$> XH.select [] (empty ++ map makeLangChoice langs) Nothing where
-    lookupLang lid' = find ((==lid').lid) langs
-    makeLangChoice Language{lid,langTitle} = (lid,langTitle)
-  chanInput = lookupChan <$> XH.select [] (empty ++ map makeChanChoice chans) Nothing where
-    lookupChan cid' = find ((==cid').cid) chans
-    makeChanChoice Channel{cid,chanName} = (cid,chanName)
+  select acc make xs = look acc xs <$> XH.select [] (empty ++ map make xs) Nothing
+  look acc xs x = find ((==x).acc) xs
+  makeLangChoice Language{lid,langTitle} = (lid,langTitle)
+  makeChanChoice Channel{cid,chanName} = (cid,chanName)
   empty = [(0,"")]
   pasteInput = X.plug Html.thediv $ XH.textarea (Just 10) (Just 50) Nothing
   clean = filter (/='\r') -- For some reason highlighting-kate counts \r\n as 2 lines.
