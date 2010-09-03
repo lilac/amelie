@@ -7,7 +7,7 @@ module Main where
 import           Control.Applicative            (Applicative)
 import           Control.Applicative            (pure,(<$>),(<*>),(*>))
 import           Control.Applicative.Error      (Failing(..))
-import           Control.Arrow                  (second)
+import           Control.Arrow                  (second,(***))
 import           Control.Monad                  (ap)
 import           Control.Monad.Identity         (Identity)
 import           Control.Monad.Identity         (runIdentity)
@@ -19,7 +19,7 @@ import qualified Data.ByteString.Char8          as B (ByteString)
 import qualified Data.ByteString.Char8          as B (readFile,concat,pack)
 import qualified Data.ByteString.Lazy           as L (ByteString)
 import qualified Data.ByteString.Lazy           as L (toChunks,fromChunks)
-import           Data.Char                      (toLower,isDigit,isLetter,toUpper)
+import           Data.Char                      (toLower,toUpper)
 import           Data.Data                      (Data,Typeable)
 import           Data.List                      (find,nub,intercalate,foldl')
 import           Data.Maybe                     (listToMaybe,isJust)
@@ -28,10 +28,11 @@ import           Data.Time
 import           System.Directory               (doesFileExist)
 import           System.Locale                  (defaultTimeLocale)
 
+import           Codec.Binary.UTF8.String       (decodeString,encodeString)
 import           Data.ByteString.Search         (replace)
 import           Data.ConfigFile                hiding (content)
 import           Data.List.Split                (splitWhen)
-import qualified Data.String.Utils              as List (replace)
+import qualified Data.List.Utils                as List (replace)
 import           Data.Text                      (pack)
 import           Data.Time.Instances            ()
 import           Database.PostgreSQL.Enumerator (DBM,Session,IsolationLevel(..),ConnectA)
@@ -49,6 +50,7 @@ import           Text.Blaze.Renderer.Utf8       (renderHtml)
 import qualified Text.Formlets                  as X
 import           Text.Highlighting.Kate         (FormatOption(..))
 import qualified Text.Highlighting.Kate         as Kate
+import           Text.XHtml.Strict              ((<<))
 import qualified Text.XHtml.Strict              as Html
 import qualified Text.XHtml.Strict.Formlets     as XH
 
@@ -139,6 +141,7 @@ router = do
       assocs x = map snd . filter (odd' . fst) . zip [1..] . zip x . tail $ x
         where odd' = odd :: Integer -> Bool
       cls = (db chansAndLangs >>=)
+  CGI.setHeader "Content-Type" "text/html; charset=UTF-8"
   case name of
     "paste" -> cls $ pastePage params
     "raw"   -> cls $ rawPastePage params
@@ -172,7 +175,7 @@ rules = [("paste",rewritePaste),("raw",rewritePaste)] where
     _ -> rewriteBasic name params
   -- | Normalize a string.
   norm = map toLower . replaceUnless '_' valid
-  valid c = isDigit c || isLetter c || any (==c) "_"
+  valid c = any (==toLower c) $ "_" ++ ['a'..'z'] ++ ['0'..'9']
 
 -- | Join a list of string parts into a slash-separated string.
 slashParts :: [String] -> String
@@ -203,7 +206,7 @@ template title' name ps inner = do
              mainTempl <- liftIO $ B.readFile temp
              let params = [("page",templ)
                           ,("name",B.pack name)
-                          ,("title",B.pack title')
+                          ,("title",B.pack $ encodeString title')
                           ,("analytics",B.pack analytics)]
                           ++ ps ++ renderedHtml
              CGI.outputFPS $ fillTemplate params mainTempl
@@ -211,7 +214,7 @@ template title' name ps inner = do
                 (CGI.outputFPS . renderHtml) 
                 inner
     where renderedHtml = case inner of
-            Just in' -> [("inner",l2s $renderHtml in')]
+            Just in' -> [("inner",l2s $ renderHtml in')]
             Nothing -> []
 
 -- | Fill a template's parameters.
@@ -244,8 +247,8 @@ pastePage = asPastePage $ \paste@Paste{title} ->
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
 rawPastePage = asPastePage $ \Paste{content} -> do
-  CGI.setHeader "Content-Type" "text/plain"
-  CGI.output content
+  CGI.setHeader "Content-Type" "text/plain; charset=UTF-8"
+  CGI.output $ encodeString content
 
 -- | A CGI page to show a paste.
 asPastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
@@ -268,7 +271,7 @@ asPastePage run ps cl =
 newPastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
              => ChansAndLangs -> m CGIResult
 newPastePage cl = do
-  inputs <- CGI.getInputs
+  inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
   submitted <- isJust <$> CGI.getInput "submit"
   let (result,formHtml) = pasteForm cl inputs
   case result of
@@ -334,12 +337,10 @@ pasteInfoHtml Paste{..} =
 pastePasteHtml :: Paste -> H.Html
 pastePasteHtml paste@Paste{..} = do
   H.style $ text highlightCSS
-  case highlight of
-    Just html -> H.div $ H.preEscapedString $ html
-    Nothing   -> H.div $ H.code $ H.preEscapedString $ clean content
-  where highlight = pasteHighlightedHtml paste
-        clean = List.replace "\n" "<br>" .
-                List.replace "<" "&lt;" . List.replace ">" "gt;"
+  H.div $ H.preEscapedString $ case pasteHighlightedHtml paste of
+    Just html -> html
+    Nothing   -> plain $ Html.thecode << content
+    where plain = List.replace "\n" "<br>" . Html.showHtmlFragment
 
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
@@ -509,7 +510,7 @@ pastesSearchString = cond where
   terms = nub . map sterilize . filter ((/="") . filter valid) . splitWhen (==' ')
   checkTerm term = "title like '%" ++ term ++ "%'"
   sterilize = replaceUnless '_' valid
-  valid c = isDigit c || isLetter c || any (==c) ".-"
+  valid c = any (==toLower c) $ "_" ++ ['a'..'z'] ++ ['0'..'9']
 
 -- | Retrieve paste by its primary key.
 pasteById :: Int -> ChansAndLangs -> DBM mark Session (Maybe Paste)
