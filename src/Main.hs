@@ -25,7 +25,7 @@ import           Data.Data                      (Data,Typeable)
 import           Data.List                      (find,nub,intercalate,foldl',union)
 import           Data.Maybe                     (listToMaybe,isJust,fromMaybe)
 import           Data.Monoid                    (mconcat,mempty)
-import           Data.Time
+import           Data.Time                      (UTCTime,formatTime)
 import           System.Directory               (doesFileExist)
 import           System.Locale                  (defaultTimeLocale)
 
