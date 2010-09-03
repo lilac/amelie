@@ -50,8 +50,9 @@ $(document).ready(function(){
   // Add a clear after the form textarea
   $('.hpaste-new-paste-form textarea').after($('<div class="hpaste-clear"></div>'));
   // Form validation
-  function check(){
+  function check(form_submitted){
     var invalid = false;
+    var first_invalid;
     var inputs = "*title,*author,language,channel,*paste".split(/,/g);
     for (var i = 0; i < inputs.length; i++) {
       var req = inputs[i].match(/\*/);
@@ -64,6 +65,7 @@ $(document).ready(function(){
           if (req && input.val().trim() == '') {
             li.addClass('invalid-input');
             invalid = true;
+            first_invalid = first_invalid || input;
           } else {
             li.removeClass('invalid-input');
           }
@@ -71,6 +73,7 @@ $(document).ready(function(){
         x++;
       });
     }
+    if (invalid && form_submitted) first_invalid.focus();
     return !invalid;
   }
   $('.hpaste-new-paste-form').find('input,textarea,select').each(function(){
@@ -79,7 +82,7 @@ $(document).ready(function(){
   var interval;
   $('.hpaste-new-paste-form form').submit(function(){
     if (!interval) interval = setInterval(check,1000);
-    return check();
+    return check(true);
   });
 });
 
