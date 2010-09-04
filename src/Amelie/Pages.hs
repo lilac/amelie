@@ -1,40 +1,37 @@
 {-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings #-}
 module Amelie.Pages where
 
-import           Control.Applicative         ((<$>))
-import           Control.Applicative.Error   (Failing(..))
-import           Control.Arrow               ((***))
-import           Control.Monad.State         (MonadState)
-import           Control.Monad.Trans         (MonadIO)
-import           Data.List                   (find)
-import           Data.Maybe                  (isJust)
-import           Data.Monoid                 (mconcat,mempty)
+import           Control.Applicative        ((<$>))
+import           Control.Applicative.Error  (Failing(..))
+import           Control.Arrow              ((***))
+import           Control.Monad.State        (MonadState)
+import           Control.Monad.Trans        (MonadIO)
+import           Data.List                  (find)
+import           Data.Maybe                 (isJust)
 
-import           Codec.Binary.UTF8.String    (decodeString,encodeString)
-import qualified Data.ByteString.Char8       as B (pack)
-import qualified Data.ByteString.Lazy.Char8  as L (ByteString)
-import qualified Data.ByteString.Lazy.Char8  as L (concat)
-import           Data.Text                   (pack)
-import           Data.Time.Instances         ()
-import           Network.CGI                 (CGIResult)
-import qualified Network.CGI                 as CGI
-import           Network.CGI.Monad           (MonadCGI(..))
-import           Safe                        (readMay)
-import           Text.Blaze.Html5            ((!))
-import qualified Text.Blaze.Html5            as H
-import qualified Text.Blaze.Html5.Attributes as A
-import           Text.Blaze.Renderer.Utf8    (renderHtml)
+import           Codec.Binary.UTF8.String   (decodeString,encodeString)
+import qualified Data.ByteString.Char8      as B (pack)
+import qualified Data.ByteString.Lazy.Char8 as L (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as L (concat)
+import           Data.Time.Instances        ()
+import           Network.CGI                (CGIResult)
+import qualified Network.CGI                as CGI
+import           Network.CGI.Monad          (MonadCGI(..))
+import           Safe                       (readMay)
+import           Text.Blaze.Renderer.Utf8   (renderHtml)
 
-import           Amelie.DB                   (db)
-import qualified Amelie.DB                   as DB
-import           Amelie.HTML                 (pasteForm,pastesHtmlTable,pasteInfoHtml,
-                                              pastePasteHtml)
-import           Amelie.Links                (link)
-import           Amelie.Pages.Error          (errorPage)
-import           Amelie.Templates            (template,renderTemplate)
-import           Amelie.Types                (State(..),Paste(..),ChansAndLangs,SCGI,
+import           Amelie.DB                  (db)
+import qualified Amelie.DB                  as DB
+import           Amelie.HTML                 (pasteForm,pastesHtmlTable
+                                             ,pasteInfoHtml,pastePasteHtml
+                                             ,newPasteHtml)
+import           Amelie.Links               (link)
+import           Amelie.Pages.Error         (errorPage)
+import           Amelie.Templates           (template,renderTemplate)
+import           Amelie.Types                (State(..),Paste(..),
+                                              ChansAndLangs,SCGI,
                                               Language(..))
-import           Amelie.Utils                (text,l2s)
+import           Amelie.Utils               (l2s)
 
 -- | A CGI page of all pastes.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
@@ -119,16 +116,3 @@ newPastePage cl = do
   where pageWithErrors errs form submitted =
           template "New paste" "new" [] $ Just $
             newPasteHtml (Just (submitted,errs)) form
-
--- | The HTML container/submitter/error displayer for the paste form.
-newPasteHtml :: Maybe (Bool,[String]) -> String -> H.Html
-newPasteHtml s form = do
-  case s of 
-    Just (True,errs@(_:_)) -> do
-      H.p ! A.class_ "errors" $ text "There were some problems with your input:"
-      H.ul . mconcat . map (H.li . H.text . pack) $ errs
-    _ -> mempty
-  H.form ! A.method "post" ! A.action "/new" $ do
-    H.preEscapedString form
-    H.input ! A.type_ "submit" ! A.value "Create Paste" ! A.class_ "submit"
-    H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"

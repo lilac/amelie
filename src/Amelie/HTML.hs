@@ -103,6 +103,19 @@ pastePasteHtml paste@Paste{..} lang = do
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
 instance Applicative RunForm where (<*>) = ap; pure = return
+-- | The HTML container/submitter/error displayer for the paste form.
+newPasteHtml :: Maybe (Bool,[String]) -> String -> H.Html
+newPasteHtml s form = do
+  case s of 
+    Just (True,errs@(_:_)) -> do
+      H.p ! A.class_ "errors" $ text "There were some problems with your input:"
+      H.ul . mconcat . map (H.li . H.text . pack) $ errs
+    _ -> mempty
+  H.form ! A.method "post" ! A.action "/new" $ do
+    H.preEscapedString form
+    H.input ! A.type_ "submit" ! A.value "Create Paste" ! A.class_ "submit"
+    H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
+
 
 -- | A form for submitting a new paste.
 pasteForm :: ChansAndLangs -> [(String,String)] -> (Failing Paste,String)
