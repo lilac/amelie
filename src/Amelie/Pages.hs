@@ -56,9 +56,13 @@ pastePage = asPastePage page where
       pastes <- db $ DB.pastesByParent parent cl
       rendered <- sequence <$> mapM render (main : pastes)
       case rendered of
+        Right (html:htmls) -> do
+          let htmls' = "<h2 class='annotations'>Annotations</h2>" : htmls
+          template mainTitle "paste" [("paste",l2s html)
+                                     ,("annotations",l2s $ L.concat htmls')]
+                   Nothing
+        Right _     -> errorPage "No paste."
         Left err    -> errorPage err
-        Right htmls ->
-          template mainTitle "paste" [("pastes",l2s $ L.concat htmls)] Nothing
     where render paste@Paste{pid,title} = renderTemplate "info_paste" params where
             params = [("title",B.pack title)
                      ,("info",info)
