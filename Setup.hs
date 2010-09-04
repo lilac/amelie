@@ -40,9 +40,8 @@ fastcgi "refresh" = do
   system "cabal build && cabal test fastcgi restart"
   return ()
 fastcgi "restart" = do
-  fastcgi "stop" 
-  fastcgi "clean"
-  fastcgi "start"
+  system "cabal test fastcgi stop; cabal test fastcgi clean; cabal test fastcgi start" 
+  return ()
 fastcgi "clean" = fpid id $ do
   system $ "rm " ++ fppath
 fastcgi a = badarg a
