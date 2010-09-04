@@ -23,8 +23,6 @@ a {
  */
 div.hpaste-wrap { 
     padding: 20px;
-    min-width: 500px;
-    max-width: 790px;
     margin-left: auto;
     margin-right: auto;
 }
