@@ -81,7 +81,8 @@ allPastes = do
 allPastesLimitBy :: Integer -> DBM mark Session [Paste]
 allPastesLimitBy limit = do
   cl <- chansAndLangs
-  reverse <$> pastesByQuery cl (" ORDER BY id DESC LIMIT " ++ show limit)
+  reverse <$> pastesByQuery cl (unwords ["WHERE annotation_of IS NULL"
+                                        ,"ORDER BY id DESC LIMIT " ++ show limit])
 
 -- | Retrieve all channels.
 allChannels :: DBM mark Session [Channel]
@@ -120,6 +121,10 @@ pastesSearchString = cond where
 -- | Retrieve paste by its primary key.
 pasteById :: Int -> ChansAndLangs -> DBM mark Session (Maybe Paste)
 pasteById pid' cl = listToMaybe <$> pastesByQuery cl ("where id = " ++ show pid')
+
+-- | Retrieve pastes by a parent.
+pastesByParent :: Int -> ChansAndLangs -> DBM mark Session [Paste]
+pastesByParent p cl = pastesByQuery cl ("where annotation_of = " ++ show p)
 
 -- | Return a list of pastes by the query.
 pastesByQuery :: ChansAndLangs -> String -> DBM mark Session [Paste]
