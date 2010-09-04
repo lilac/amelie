@@ -12,6 +12,7 @@ import           Data.Monoid                 (mconcat,mempty)
 
 import           Codec.Binary.UTF8.String    (decodeString,encodeString)
 import qualified Data.ByteString.Char8       as B (pack)
+import qualified Data.ByteString.Lazy.Char8  as L (ByteString)
 import qualified Data.ByteString.Lazy.Char8  as L (concat)
 import           Data.Text                   (pack)
 import           Data.Time.Instances         ()
@@ -52,9 +53,9 @@ pastesPage = do
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
 pastePage = asPastePage page where
-  page ps cl@(_,langs) main@Paste{pid=parent,title=mainTitle} = do
+  page ps cl main@Paste{pid=parent,title=mainTitle} = do
       pastes <- db $ DB.pastesByParent parent cl
-      rendered <- sequence <$> mapM render (main : pastes)
+      rendered <- sequence <$> mapM (renderPaste ps cl) (main : pastes)
       case rendered of
         Right (html:htmls) -> do
           let htmls' = "<h2 class='annotations'>Annotations</h2>" : htmls
@@ -63,14 +64,20 @@ pastePage = asPastePage page where
                    Nothing
         Right _     -> errorPage "No paste."
         Left err    -> errorPage err
-    where render paste@Paste{pid,title} = renderTemplate "info_paste" params where
-            params = [("title",B.pack title)
-                     ,("info",info)
-                     ,("paste",paste')]
-            info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
-            paste' = l2s $ renderHtml $ pastePasteHtml paste lang
-            lang = lookup lparam ps >>= \name -> find ((==name) . langName) langs
-            lparam = "lang_" ++ show pid
+
+-- | Try to a paste info and content to HTML string.
+renderPaste :: (MonadIO m, MonadState State m)
+               => [(String, String)] -> ChansAndLangs -> Paste 
+               -> m (Either String L.ByteString)
+renderPaste ps cl@(_,langs) paste@Paste{pid,title} = 
+    renderTemplate "info_paste" params where
+  params = [("title",B.pack title)
+           ,("info",info)
+           ,("paste",paste')]
+  info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
+  paste' = l2s $ renderHtml $ pastePasteHtml paste lang
+  lang = lookup lparam ps >>= \name -> find ((==name) . langName) langs
+  lparam = "lang_" ++ show pid
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
