@@ -207,3 +207,4 @@ h2.annotations {
 .hpaste-annotations + div.hpaste-create-new-paste {
     margin-top: 10px;
 }
+li.lang-switch + li { clear: both; }

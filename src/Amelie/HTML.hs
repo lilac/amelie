@@ -70,7 +70,9 @@ pasteInfoHtml lang cl paste@Paste{..} an_of = do
             maybe mempty (def "Channel" . text . chanName) channel
             def "Created" $ H.span ! aid "created" $ text creationDate
             def "Raw" $ href (self "raw") $ text "View raw file"
-            def "Language" $ displayLangSwitcher lang cl paste
+            def "Language" (displayLangSwitcher lang cl paste)
+              ! A.class_ "lang-switch"
+            def "Manage" $ href (self "control") "Edit this paste"
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         attr f a = f (H.stringValue a)
         aid = A.id -- To appease hlint, for now.
