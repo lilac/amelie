@@ -11,6 +11,7 @@ import           Data.Maybe                  (isJust)
 import           Data.Monoid                 (mconcat,mempty)
 
 import           Codec.Binary.UTF8.String    (decodeString,encodeString)
+import qualified Data.ByteString.Char8       as B (pack)
 import           Data.Text                   (pack)
 import           Data.Time.Instances         ()
 import           Network.CGI                 (CGIResult)
@@ -28,7 +29,7 @@ import           Amelie.HTML                 (pasteForm,pastesHtmlTable,pasteInf
                                               pastePasteHtml)
 import           Amelie.Links                (link)
 import           Amelie.Pages.Error          (errorPage)
-import           Amelie.Templates            (template)
+import           Amelie.Templates            (template,renderTemplate)
 import           Amelie.Types                (State(..),Paste(..),ChansAndLangs,SCGI,
                                               Language(..))
 import           Amelie.Utils                (text,l2s)
@@ -49,11 +50,18 @@ pastesPage = do
 
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
-pastePage = asPastePage $ \ps cl@(_,langs) paste@Paste{title} ->
-  let lang = lookup "lang" ps >>= \name -> find ((==name) . langName) langs
-      info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
-      paste' = l2s $ renderHtml $ pastePasteHtml paste lang
-  in template title "paste" [("info",info),("paste",paste')] Nothing
+pastePage = asPastePage page where
+  page ps cl@(_,langs) paste@Paste{title} = do
+      rendered <- renderTemplate "info_paste" params
+      case rendered of
+        Right html -> template title "paste" [("pastes",l2s html)] Nothing
+        Left e     -> errorPage e
+    where lang = lookup "lang" ps >>= \name -> find ((==name) . langName) langs
+          info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
+          paste' = l2s $ renderHtml $ pastePasteHtml paste lang
+          params = [("title",B.pack title)
+                   ,("info",info)
+                   ,("paste",paste')]
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult

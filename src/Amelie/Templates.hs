@@ -53,6 +53,20 @@ template title' name ps inner = do
             Just in' -> [("inner",l2s $ renderHtml in')]
             Nothing -> []
 
+-- | Fill a template by a filename and render it to a string.
+renderTemplate :: (MonadIO m,MonadState State m)
+                  => PageName -> [(String,B.ByteString)] 
+                  -> m (Either String L.ByteString)
+renderTemplate name ps = do
+  tempDir <- gets $ templateDir . config
+  let page = (tempDir </> name ++ ".html")
+  exists <- liftIO $ doesFileExist page
+  if exists
+     then do templ <- liftIO $ B.readFile page
+             let params = ps
+             return $ Right $ fillTemplate params templ
+     else return $ Left $ "No such template file: " ++ show (tempDir </> name)
+
 -- | Fill a template's parameters.
 fillTemplate :: [(String,B.ByteString)] -> B.ByteString -> L.ByteString
 fillTemplate xs str = L.fromChunks . return $ foldl' rep str xs where
