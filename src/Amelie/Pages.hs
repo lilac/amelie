@@ -135,9 +135,10 @@ editCreatePastePage params cl = do
                     in pageWithErrors title errs formHtml submitted
     Success paste -> do pid' <- insertOrUpdate paste annotation_of
                         let pasteid = fromMaybe pid' annotation_of
-                        CGI.redirect $ link "paste" [("pid",show pasteid)
-                                                    ,("title",title paste)
-                                                    ,("annotation",show pid')]
+                        CGI.redirect $ link "paste" $ 
+                          [("pid",show pasteid)
+                          ,("title",title paste)]
+                          ++ [("annotation",show pid') | isJust annotation_of]
   where pageWithErrors title errs form submitted =
           template title "control" [] $ Just $
             controlPasteHtml title (Just (submitted,errs)) form Nothing
