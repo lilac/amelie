@@ -16,6 +16,7 @@ import           Data.List                   (find)
 import           Data.Maybe                  (fromMaybe)
 import           Data.Monoid                 (mconcat,mempty)
 import           Data.Time                   (UTCTime,formatTime)
+import           Safe                        (readMay)
 import           System.Locale               (defaultTimeLocale)
 
 import qualified Data.List.Utils             as List (replace)
@@ -112,48 +113,64 @@ pastePasteHtml paste@Paste{..} lang = do
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
 instance Applicative RunForm where (<*>) = ap; pure = return
+
 -- | The HTML container/submitter/error displayer for the paste form.
-newPasteHtml :: Maybe (Bool,[String]) -> String -> Maybe Int -> H.Html
-newPasteHtml s form annotation_of = do
+controlPasteHtml :: String -> Maybe (Bool,[String]) -> String -> Maybe Int
+                -> H.Html
+controlPasteHtml title s form annotation_of = do
   case s of 
     Just (True,errs@(_:_)) -> do
       H.p ! A.class_ "errors" $ text "There were some problems with your input:"
       H.ul . mconcat . map (H.li . H.text . pack) $ errs
     _ -> mempty
-  H.form ! A.method "post" ! A.action "/new" $ do
+  H.form ! A.method "post" ! A.action "/control" $ do
     H.preEscapedString form
-    H.input ! A.type_ "submit" ! A.value "Create Paste" ! A.class_ "submit"
+    H.input ! A.type_ "submit" ! A.value (H.stringValue title) ! A.class_ "submit"
     H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
     maybe mempty annotate annotation_of
   where annotate p =
           H.input ! A.type_ "hidden" ! A.value (H.stringValue $ show p) 
                   ! A.name "annotation_of"
 
--- | A form for submitting a new paste.
-pasteForm :: ChansAndLangs -> [(String,String)] -> (Failing Paste,String)
-pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
+-- | A form for controlling pastes; creating, editing.
+pasteForm :: Maybe Paste -> ChansAndLangs -> [(String,String)]
+             -> (Failing Paste,String)
+pasteForm paste (chans,langs) inputs =
+  runIdentity $ runForm resultAndHtml where
   resultAndHtml = (,Html.renderHtmlFragment html) <$> run
   (run,html,_) = X.runFormState env form
   env = map (second Left) inputs
   form = X.plug Html.ulist $ 
-           Paste <$> pure 0
-                 <*> label "Title"    nempty (XH.input Nothing)
-                 <*> label "Author"   nempty (XH.input Nothing)
-                 <*> label "Language" we (select lid makeLangChoice langs)
-                 <*> label "Channel"  we (select cid makeChanChoice chans)
-                 <*> label "Paste"    nempty (clean <$> pasteInput)
-                 <*> pure []
-                 <*> pure Nothing
-                 <*> pure Nothing
-  select acc make xs = look acc xs <$> XH.select [] (empty ++ map make xs) Nothing
+     Paste <$> (fromMaybe 0 . (>>=readMay) <$> editId paste)
+           <*> label "Title"    nempty (XH.input $ title <$> paste)
+           <*> label "Author"   nempty (XH.input $ author <$> paste)
+           <*> label "Language" we languageInput
+           <*> label "Channel"  we channelInput
+           <*> label "Paste"    nempty (clean <$> pasteInput (content <$> paste))
+           <*> pure []
+           <*> pure Nothing
+           <*> pure Nothing
+  languageInput = select (paste >>= language) lid makeLangChoice langs
+  channelInput = select (paste >>= channel) cid makeChanChoice chans
+  select cur acc make xs =
+    look acc xs <$> XH.select [] (empty ++ map make xs) (acc <$> cur)
+      where  empty = [(0,"")]
   look acc xs x = find ((==x).acc) xs
   makeLangChoice Language{lid,langTitle} = (lid,langTitle)
   makeChanChoice Channel{cid,chanName} = (cid,chanName)
-  empty = [(0,"")]
-  pasteInput = X.plug Html.thediv $ XH.textarea (Just 10) (Just 50) Nothing
-  clean = filter (/='\r') -- For some reason highlighting-kate counts \r\n as 2 lines.
+  pasteInput c = X.plug Html.thediv $ XH.textarea (Just 10) (Just 50) c
+  clean = filter (/='\r')
   nempty = not . null
   we = const True
+
+-- | Embed the id of the paste we're editing in the form.
+editId :: Maybe Paste -> XH.Form Html.Html RunForm (Maybe String)
+editId pid = XH.optionalInput $ \name ->
+  case pid of
+    Nothing   -> Html.noHtml
+    Just Paste{pid=pid'} ->
+      Html.input Html.! [Html.name name,Html.thetype "hidden"
+                        ,Html.value $ show pid']
 
 -- | Label an input and apply a predicate to it for making inputs required.
 label :: (Show a,Monad m,Applicative m) =>

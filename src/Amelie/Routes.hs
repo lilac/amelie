@@ -30,10 +30,10 @@ router = do
       cls = (db chansAndLangs >>=)
   CGI.setHeader "Content-Type" "text/html; charset=UTF-8"
   case name of
-    "paste" -> cls $ Pages.pastePage params
-    "raw"   -> cls $ Pages.rawPastePage params
-    "new"   -> cls Pages.newPastePage
-    _       -> Pages.pastesPage
+    "paste"   -> cls $ Pages.pastePage params
+    "raw"     -> cls $ Pages.rawPastePage params
+    "control" -> cls $ Pages.editCreatePastePage params
+    _         -> Pages.pastesPage
 
 -- | Run a sessioned CGI page with a database connection and configuration.
 runPage :: Config -> SCGI CGIResult -> CGI CGIResult

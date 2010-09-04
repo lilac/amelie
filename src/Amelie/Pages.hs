@@ -23,7 +23,7 @@ import           Amelie.DB                  (db)
 import qualified Amelie.DB                  as DB
 import           Amelie.HTML                 (pasteForm,pastesHtmlTable
                                              ,pasteInfoHtml,pastePasteHtml
-                                             ,newPasteHtml)
+                                             ,controlPasteHtml)
 import           Amelie.Links               (link)
 import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Templates           (template,renderTemplate)
@@ -40,7 +40,8 @@ pastesPage = do
   cl <- db DB.chansAndLangs
   let latestPastes = l2s $ renderHtml $ pastesHtmlTable pastes
       newPasteForm = l2s $ renderHtml $
-                     newPasteHtml Nothing (snd $ pasteForm cl []) Nothing
+                     controlPasteHtml "Create paste"
+                        Nothing (snd $ pasteForm Nothing cl []) Nothing
   template "All Pastes" "pastes" 
            [("latest_pastes",latestPastes)
            ,("new_paste_form",newPasteForm)]
@@ -73,8 +74,9 @@ pastePage = asPastePage page where
 annotate :: ChansAndLangs -> Paste -> SCGI L.ByteString
 annotate cl Paste{pid=annotation_of} = do
   inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
-  let (_,formHtml) = pasteForm cl inputs
-  return $ renderHtml $ newPasteHtml Nothing formHtml (Just annotation_of)
+  let (_,formHtml) = pasteForm Nothing cl inputs
+  return $ renderHtml $ controlPasteHtml "Annotate paste"
+             Nothing formHtml (Just annotation_of)
 
 -- | Try to a paste info and content to HTML string.
 renderPaste :: (MonadIO m, MonadState State m)
@@ -116,20 +118,30 @@ asPastePage run ps cl =
         noPasteGiven = errorPage "No paste given."
 
 -- | A CGI page to create a new paste.
-newPastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
-             => ChansAndLangs -> m CGIResult
-newPastePage cl = do
+editCreatePastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
+             => [(String,String)] -> ChansAndLangs -> m CGIResult
+editCreatePastePage params cl = do
   inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
   submitted <- isJust <$> CGI.getInput "submit"
   annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"
-  let (result,formHtml) = pasteForm cl inputs
+  let edit = lookup "pid" params >>= readMay
+  epaste <- case edit of
+    Just eid -> db $ DB.pasteById eid cl
+    Nothing  -> return Nothing
+  let (result,formHtml) = pasteForm epaste cl inputs
   case result of
-    Failure errs -> pageWithErrors errs formHtml submitted
-    Success paste -> do pid' <- db $ DB.createPaste paste annotation_of
+    Failure errs -> let title | isJust epaste = "Edit paste" 
+                              | otherwise     = "New paste"
+                    in pageWithErrors title errs formHtml submitted
+    Success paste -> do pid' <- insertOrUpdate paste annotation_of
                         let pasteid = fromMaybe pid' annotation_of
                         CGI.redirect $ link "paste" [("pid",show pasteid)
                                                     ,("title",title paste)
                                                     ,("annotation",show pid')]
-  where pageWithErrors errs form submitted =
-          template "New paste" "new" [] $ Just $
-            newPasteHtml (Just (submitted,errs)) form Nothing
+  where pageWithErrors title errs form submitted =
+          template title "control" [] $ Just $
+            controlPasteHtml title (Just (submitted,errs)) form Nothing
+        insertOrUpdate paste@Paste{pid} an_of =
+          if pid > 0
+             then do db $ DB.updatePaste paste; return pid
+             else db $ DB.createPaste paste an_of
