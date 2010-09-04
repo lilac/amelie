@@ -81,7 +81,7 @@ displayLangSwitcher :: Maybe Language -> ChansAndLangs -> Paste -> H.Html
 displayLangSwitcher paramLang (_,langs) Paste{title,pid,language} =
   H.form ! A.class_ "lang-switcher" ! A.action (H.stringValue self) $ do
     H.input ! A.type_ "hidden" ! A.name "pid" ! attr A.value (show pid)
-    H.select ! A.name "lang" $ mconcat $ empty : map showLang langs
+    H.select ! attr A.name lparam $ mconcat $ empty : map showLang langs
     H.input ! A.type_ "submit" ! A.value "Change display"
   where self = link "paste" [("pid",show pid),("title",title)]
         attr f a = f (H.stringValue a)
@@ -90,6 +90,7 @@ displayLangSwitcher paramLang (_,langs) Paste{title,pid,language} =
           let opt = H.option ! attr A.value langName $ text langTitle
           in if lang == Just lang' then opt ! A.selected "selected" else opt
         lang = paramLang `mplus` language
+        lparam = "lang_" ++ show pid
 
 -- | Paste HTML of a paste.
 pastePasteHtml :: Paste -> Maybe Language -> H.Html

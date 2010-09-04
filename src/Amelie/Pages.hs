@@ -12,6 +12,7 @@ import           Data.Monoid                 (mconcat,mempty)
 
 import           Codec.Binary.UTF8.String    (decodeString,encodeString)
 import qualified Data.ByteString.Char8       as B (pack)
+import qualified Data.ByteString.Lazy.Char8  as L (concat)
 import           Data.Text                   (pack)
 import           Data.Time.Instances         ()
 import           Network.CGI                 (CGIResult)
@@ -51,17 +52,20 @@ pastesPage = do
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
 pastePage = asPastePage page where
-  page ps cl@(_,langs) paste@Paste{title} = do
-      rendered <- renderTemplate "info_paste" params
+  page ps cl@(_,langs) main@Paste{title=mainTitle} = do
+      rendered <- sequence <$> mapM render [main]
       case rendered of
-        Right html -> template title "paste" [("pastes",l2s html)] Nothing
-        Left e     -> errorPage e
-    where lang = lookup "lang" ps >>= \name -> find ((==name) . langName) langs
-          info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
-          paste' = l2s $ renderHtml $ pastePasteHtml paste lang
-          params = [("title",B.pack title)
-                   ,("info",info)
-                   ,("paste",paste')]
+        Left err    -> errorPage err
+        Right htmls ->
+          template mainTitle "paste" [("pastes",l2s $ L.concat htmls)] Nothing
+    where render paste@Paste{pid,title} = renderTemplate "info_paste" params where
+            params = [("title",B.pack title)
+                     ,("info",info)
+                     ,("paste",paste')]
+            info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
+            paste' = l2s $ renderHtml $ pastePasteHtml paste lang
+            lang = lookup lparam ps >>= \name -> find ((==name) . langName) langs
+            lparam = "lang_" ++ show pid
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
