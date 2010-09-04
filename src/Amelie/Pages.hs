@@ -52,8 +52,9 @@ pastesPage = do
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
 pastePage = asPastePage page where
-  page ps cl@(_,langs) main@Paste{title=mainTitle} = do
-      rendered <- sequence <$> mapM render [main]
+  page ps cl@(_,langs) main@Paste{pid=parent,title=mainTitle} = do
+      pastes <- db $ DB.pastesByParent parent cl
+      rendered <- sequence <$> mapM render (main : pastes)
       case rendered of
         Left err    -> errorPage err
         Right htmls ->
