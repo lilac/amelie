@@ -58,7 +58,9 @@ pastePage = asPastePage page where
       rendered <- sequence <$> mapM (renderPaste ps cl) (main : pastes)
       case rendered of
         Right (html:htmls) -> do
-          let htmls' = "<h2 class='annotations'>Annotations</h2>" : htmls
+          let htmls' 
+                | null htmls = []
+                | otherwise = "<h2 class='annotations'>Annotations</h2>" : htmls
           template mainTitle "paste" [("paste",l2s html)
                                      ,("annotations",l2s $ L.concat htmls')]
                    Nothing
