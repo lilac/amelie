@@ -65,6 +65,23 @@ insertPaste Paste{..} an_of = DB.execDDL (DB.cmdbind stmt params) where
            ,("channel",DB.bindP $ fmap cid channel)] ++
            maybe [] (\p -> [("annotation_of",DB.bindP p)]) an_of
 
+-- | Update paste.
+updatePaste :: Paste -> DBM mark Session ()
+updatePaste Paste{..} = DB.execDDL (DB.cmdbind stmt params) where
+  stmt = unwords ["update paste set"
+                 ,fieldSpec
+                 ,"where id = " ++ show pid]
+  fieldSpec = intercalate "," $ map spec fields 
+    where spec (key,_) = key ++ " = ?"
+  params = map snd fields
+  fields = [("title",DB.bindP title)
+           ,("content",DB.bindP content)
+           ,("tags",DB.bindP $ intercalate "," tags)
+           ,("author",DB.bindP author)
+           ,("language",DB.bindP $ fmap lid language)
+           ,("channel",DB.bindP $ fmap cid channel)
+           ,("annotation_of",DB.bindP annotation_of)]
+
 -- | Channels and languages.
 chansAndLangs :: DBM mark Session ([Channel],[Language])
 chansAndLangs = do
