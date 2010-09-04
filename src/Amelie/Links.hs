@@ -17,7 +17,7 @@ link name params
 
 rewriteBasic :: PageName -> [(String,String)] -> String
 rewriteBasic name = slashParts . (name :) . map spec where
-    spec (key,value) = key ++ "/" ++ value
+    spec (key,value) = key ++ "/" ++ (norm value)
 
 -- | Is a page's URL rewritable?
 rewritable :: PageName -> Bool
@@ -34,8 +34,10 @@ rules = [("paste",rewritePaste),("raw",rewritePaste)] where
       | name == "raw"   -> slashParts [name,pid']
       | name == "paste" -> slashParts [pid']
     _ -> rewriteBasic name params
-  -- | Normalize a string.
-  norm = map toLower . replaceUnless '_' valid
+
+-- | Normalize a string.
+norm :: String -> String
+norm = map toLower . replaceUnless '_' valid where
   valid c = any (==toLower c) $ "_" ++ ['a'..'z'] ++ ['0'..'9']
 
 -- | Join a list of string parts into a slash-separated string.
