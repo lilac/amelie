@@ -99,6 +99,9 @@ div.hpaste-footer {
 div.hpaste-footer a {
     color: #2D2542;
 }
+div.hpaste-footer a:hover {
+    text-decoration: underline;
+}
 
 /******************************************************************************
  * pastes.html
