@@ -15,14 +15,16 @@ import Network.CGI.Monad              (MonadCGI(..))
 
 -- | A paste.
 data Paste =
-  Paste { pid      :: Int             -- ^ Database entity id.
-        , title    :: Title           -- ^ Title of the paste (limited to 512~).
-        , author   :: Author          -- ^ Author(s) of the paste.
-        , language :: Maybe Language  -- ^ Language (if any) of the paste.
-        , channel  :: Maybe Channel   -- ^ Associated IRC channel (if any).
-        , content  :: Content         -- ^ Raw content of the paste.
-        , tags     :: [Tag]           -- ^ Tags/keywords for the paste.
-        , created  :: Maybe UTCTime   -- ^ When the paste was created.
+  Paste { pid           :: Int            -- ^ Database entity id.
+        , title         :: Title          -- ^ Title of the paste 
+                                          -- ^ (limited to 512~).
+        , author        :: Author         -- ^ Author(s) of the paste.
+        , language      :: Maybe Language -- ^ Language (if any) of the paste.
+        , channel       :: Maybe Channel  -- ^ Associated IRC channel (if any).
+        , content       :: Content        -- ^ Raw content of the paste.
+        , tags          :: [Tag]          -- ^ Tags/keywords for the paste.
+        , created       :: Maybe UTCTime  -- ^ When the paste was created.
+        , annotation_of :: Maybe Int      -- ^ Paste which this annotates.
         } deriving (Typeable,Data,Show)
 
 -- | Title of the paste/thing.

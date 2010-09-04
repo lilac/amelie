@@ -17,7 +17,7 @@ link name params
 
 rewriteBasic :: PageName -> [(String,String)] -> String
 rewriteBasic name = slashParts . (name :) . map spec where
-    spec (key,value) = key ++ "/" ++ (norm value)
+    spec (key,value) = key ++ "/" ++ norm value
 
 -- | Is a page's URL rewritable?
 rewritable :: PageName -> Bool
@@ -27,6 +27,8 @@ rewritable = isJust . flip lookup rules
 rules :: [(PageName,PageName -> [(String,String)] -> String)]
 rules = [("paste",rewritePaste),("raw",rewritePaste)] where
   rewritePaste name params = case sortBy (comparing fst) params of
+    [("annotation",aid),("pid",pid'),("title",title)] 
+      | name == "paste" -> slashParts [name,pid',norm title] ++ "#p" ++ aid
     [("pid",pid'),("title",title)] 
       | name == "raw"   -> slashParts [name,pid',norm title]
       | name == "paste" -> slashParts [pid',norm title]

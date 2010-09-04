@@ -59,19 +59,28 @@ pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
           url = link "paste" [("pid",show pid),("title",title)]
 
 -- | Paste info of a paste.
-pasteInfoHtml :: Maybe Language -> ChansAndLangs -> Paste -> H.Html
-pasteInfoHtml lang cl paste@Paste{..} = 
+pasteInfoHtml :: Maybe Language -> ChansAndLangs -> Paste -> Maybe Paste 
+                 -> H.Html
+pasteInfoHtml lang cl paste@Paste{..} an_of = do
+  H.a ! attr A.id anchor ! attr A.name anchor $ mempty
   H.ul $ do def "Paste" $ href (self "paste") $ text $ '#' : show pid
+            maybe mempty (def "Annotation of" . annotation) an_of
             def "Author" $ text author
             maybe mempty (def "Channel" . text . chanName) channel
             def "Created" $ H.span ! aid "created" $ text creationDate
             def "Raw" $ href (self "raw") $ text "View raw file"
             def "Language" $ displayLangSwitcher lang cl paste
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
+        attr f a = f (H.stringValue a)
         aid = A.id -- To appease hlint, for now.
         self typ = link typ [("pid",show pid),("title",title)]
         href l c = H.a ! A.href (H.stringValue l) $ c
         creationDate = fromMaybe "" $ fmap formatUTC created
+        anchor = "p" ++ show pid
+        annotation Paste{pid=pid',title=title'} =
+          href url $ text $ "#" ++ show pid'
+          where url = link "paste" [("pid",show pid'),("title",title')]
+          
 
 formatUTC :: UTCTime -> String
 formatUTC = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %Z"
@@ -104,8 +113,8 @@ pastePasteHtml paste@Paste{..} lang = do
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
 instance Applicative RunForm where (<*>) = ap; pure = return
 -- | The HTML container/submitter/error displayer for the paste form.
-newPasteHtml :: Maybe (Bool,[String]) -> String -> H.Html
-newPasteHtml s form = do
+newPasteHtml :: Maybe (Bool,[String]) -> String -> Maybe Int -> H.Html
+newPasteHtml s form annotation_of = do
   case s of 
     Just (True,errs@(_:_)) -> do
       H.p ! A.class_ "errors" $ text "There were some problems with your input:"
@@ -115,7 +124,10 @@ newPasteHtml s form = do
     H.preEscapedString form
     H.input ! A.type_ "submit" ! A.value "Create Paste" ! A.class_ "submit"
     H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
-
+    maybe mempty annotate annotation_of
+  where annotate p =
+          H.input ! A.type_ "hidden" ! A.value (H.stringValue $ show p) 
+                  ! A.name "annotation_of"
 
 -- | A form for submitting a new paste.
 pasteForm :: ChansAndLangs -> [(String,String)] -> (Failing Paste,String)
@@ -131,6 +143,7 @@ pasteForm (chans,langs) inputs = runIdentity $ runForm resultAndHtml where
                  <*> label "Channel"  we (select cid makeChanChoice chans)
                  <*> label "Paste"    nempty (clean <$> pasteInput)
                  <*> pure []
+                 <*> pure Nothing
                  <*> pure Nothing
   select acc make xs = look acc xs <$> XH.select [] (empty ++ map make xs) Nothing
   look acc xs x = find ((==x).acc) xs

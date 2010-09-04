@@ -42,16 +42,16 @@ trans :: DBM mark Session a -> DBM mark Session a
 trans = DB.withTransaction Serialisable
 
 -- | Create a new paste.
-createPaste :: Paste -> DBM mark Session Int
-createPaste paste =
+createPaste :: Paste -> Maybe Int -> DBM mark Session Int
+createPaste paste annotation_of =
   trans $ do
-    insertPaste paste
+    insertPaste paste annotation_of
     DB.doQuery (DB.sql "select last_value from paste_id_seq")
       (\pid' nil -> DB.result' (pid'+nil)) (0::Int)
 
 -- | Insert a new paste.
-insertPaste :: Paste -> DBM mark Session ()
-insertPaste Paste{..} = DB.execDDL (DB.cmdbind stmt params) where
+insertPaste :: Paste -> Maybe Int -> DBM mark Session ()
+insertPaste Paste{..} an_of = DB.execDDL (DB.cmdbind stmt params) where
   stmt = unwords ["insert into paste (" ++ fieldsSpec ++ ")"
                  ,"values (" ++ values ++ ")"]
   fieldsSpec = intercalate "," $ map fst fields
@@ -62,7 +62,8 @@ insertPaste Paste{..} = DB.execDDL (DB.cmdbind stmt params) where
            ,("tags",DB.bindP $ intercalate "," tags)
            ,("author",DB.bindP author)
            ,("language",DB.bindP $ fmap lid language)
-           ,("channel",DB.bindP $ fmap cid channel)]
+           ,("channel",DB.bindP $ fmap cid channel)] ++
+           maybe [] (\p -> [("annotation_of",DB.bindP p)]) an_of
 
 -- | Channels and languages.
 chansAndLangs :: DBM mark Session ([Channel],[Language])
@@ -122,16 +123,17 @@ pastesSearchString = cond where
 pasteById :: Int -> ChansAndLangs -> DBM mark Session (Maybe Paste)
 pasteById pid' cl = listToMaybe <$> pastesByQuery cl ("where id = " ++ show pid')
 
--- | Retrieve pastes by a parent.
-pastesByParent :: Int -> ChansAndLangs -> DBM mark Session [Paste]
-pastesByParent p cl = pastesByQuery cl ("where annotation_of = " ++ show p)
+-- | Retrieve pastes by a annotation_of.
+pastesByAnnotationOf :: Int -> ChansAndLangs -> DBM mark Session [Paste]
+pastesByAnnotationOf p cl = pastesByQuery cl $
+  "where annotation_of = " ++ show p ++ " order by id desc"
 
 -- | Return a list of pastes by the query.
 pastesByQuery :: ChansAndLangs -> String -> DBM mark Session [Paste]
 pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
   query = "select " ++ fields ++ " from paste " ++ cond
-  fields = "id,title,content,tags,author,language,channel,created at time zone 'utc'"
-  makePaste pid' title' content' tags' author' lang' chan' created' xs =
+  fields = "id,title,content,tags,author,language,channel,created at time zone 'utc',annotation_of"
+  makePaste pid' title' content' tags' author' lang' chan' created' an_of xs =
     DB.result' (paste:xs) where
       paste = Paste { pid = pid'
                     , title    = title'
@@ -141,4 +143,5 @@ pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
                     , language = lang' >>= \lid' -> find ((==lid').lid) langs
                     , channel  = chan' >>= \cid' -> find ((==cid').cid) chans
                     , created  = Just created'
+                    , annotation_of = an_of
                     }

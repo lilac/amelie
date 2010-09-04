@@ -23,4 +23,4 @@ text = H.text . pack
 
 -- | Clean and encode some text to a UTF8 HTML encoded ByteString.
 sanitize :: String -> B.ByteString
-sanitize = l2s . renderHtml . text . encodeString
+sanitize = l2s . renderHtml . text

@@ -6,7 +6,7 @@
 * DONE: Ab benchmarks? 20r/s
 * DONE: Upload and setup on tryhaskell.org
 * DONE: Viewer can select the viewing type
-* Annotations
+* DOEN: Annotations
 * Sessions for quickly editing mistakes for just-posted hpastes
 * Hlint
 * Tryhaskell prompt support

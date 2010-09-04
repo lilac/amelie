@@ -7,10 +7,9 @@ import           Control.Arrow              ((***))
 import           Control.Monad.State        (MonadState)
 import           Control.Monad.Trans        (MonadIO)
 import           Data.List                  (find)
-import           Data.Maybe                 (isJust)
+import           Data.Maybe                 (isJust,fromMaybe)
 
 import           Codec.Binary.UTF8.String   (decodeString,encodeString)
-import qualified Data.ByteString.Char8      as B (pack)
 import qualified Data.ByteString.Lazy.Char8 as L (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L (concat)
 import           Data.Time.Instances        ()
@@ -31,7 +30,7 @@ import           Amelie.Templates           (template,renderTemplate)
 import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
                                               Language(..))
-import           Amelie.Utils               (l2s,sanitize)
+import           Amelie.Utils               (l2s,text)
 
 -- | A CGI page of all pastes.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
@@ -41,7 +40,7 @@ pastesPage = do
   cl <- db DB.chansAndLangs
   let latestPastes = l2s $ renderHtml $ pastesHtmlTable pastes
       newPasteForm = l2s $ renderHtml $
-                     newPasteHtml Nothing $ snd $ pasteForm cl []
+                     newPasteHtml Nothing (snd $ pasteForm cl []) Nothing
   template "All Pastes" "pastes" 
            [("latest_pastes",latestPastes)
            ,("new_paste_form",newPasteForm)]
@@ -50,30 +49,45 @@ pastesPage = do
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
 pastePage = asPastePage page where
-  page ps cl main@Paste{pid=parent,title=mainTitle} = do
-      pastes <- db $ DB.pastesByParent parent cl
-      rendered <- sequence <$> mapM (renderPaste ps cl) (main : pastes)
+  page ps cl main@Paste{pid=main_id,title=mainTitle,annotation_of} = do
+      pastes <- db $ DB.pastesByAnnotationOf main_id cl
+      annotated <- case annotation_of of
+        Just anid -> db $ DB.pasteById anid cl
+        Nothing   -> return Nothing      
+      let paste_renders = renderPaste ps cl annotated main
+                          : map (renderPaste ps cl (Just main)) pastes
+      rendered <- sequence <$> sequence paste_renders
+      annotateForm <- annotate cl main
       case rendered of
         Right (html:htmls) -> do
           let htmls' 
                 | null htmls = []
                 | otherwise = "<h2 class='annotations'>Annotations</h2>" : htmls
           template mainTitle "paste" [("paste",l2s html)
-                                     ,("annotations",l2s $ L.concat htmls')]
+                                     ,("annotations",l2s $ L.concat htmls')
+                                     ,("annotate",l2s annotateForm)]
                    Nothing
         Right _     -> errorPage "No paste."
         Left err    -> errorPage err
 
+annotate :: ChansAndLangs -> Paste -> SCGI L.ByteString
+annotate cl Paste{pid=annotation_of} = do
+  inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
+  let (_,formHtml) = pasteForm cl inputs
+  return $ renderHtml $ newPasteHtml Nothing formHtml (Just annotation_of)
+
 -- | Try to a paste info and content to HTML string.
 renderPaste :: (MonadIO m, MonadState State m)
-               => [(String, String)] -> ChansAndLangs -> Paste 
+               => [(String, String)] -> ChansAndLangs
+               -> Maybe Paste
+               -> Paste
                -> m (Either String L.ByteString)
-renderPaste ps cl@(_,langs) paste@Paste{pid,title} = 
+renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title} = 
     renderTemplate "info_paste" params where
-  params = [("title",sanitize title)
+  params = [("title",l2s . renderHtml . text $ title)
            ,("info",info)
            ,("paste",paste')]
-  info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
+  info = l2s $ renderHtml $ pasteInfoHtml lang cl paste annotation_of
   paste' = l2s $ renderHtml $ pastePasteHtml paste lang
   lang = lookup lparam ps >>= \name -> find ((==name) . langName) langs
   lparam = "lang_" ++ show pid
@@ -107,12 +121,15 @@ newPastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
 newPastePage cl = do
   inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
   submitted <- isJust <$> CGI.getInput "submit"
+  annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"
   let (result,formHtml) = pasteForm cl inputs
   case result of
     Failure errs -> pageWithErrors errs formHtml submitted
-    Success paste -> do pid' <- db $ DB.createPaste paste
-                        CGI.redirect $ link "paste" [("pid",show pid')
-                                                    ,("title",title paste)]
+    Success paste -> do pid' <- db $ DB.createPaste paste annotation_of
+                        let pasteid = fromMaybe pid' annotation_of
+                        CGI.redirect $ link "paste" [("pid",show pasteid)
+                                                    ,("title",title paste)
+                                                    ,("annotation",show pid')]
   where pageWithErrors errs form submitted =
           template "New paste" "new" [] $ Just $
-            newPasteHtml (Just (submitted,errs)) form
+            newPasteHtml (Just (submitted,errs)) form Nothing
