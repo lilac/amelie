@@ -5,7 +5,7 @@
 * DONE: Create cabal file
 * DONE: Ab benchmarks? 20r/s
 * DONE: Upload and setup on tryhaskell.org
-* Viewer can select the viewing type
+* DONE: Viewer can select the viewing type
 * Annotations
 * Sessions for quickly editing mistakes for just-posted hpastes
 * Hlint
