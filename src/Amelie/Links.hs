@@ -2,8 +2,9 @@
 module Amelie.Links where
 
 import Data.Char    (toLower)
-import Data.List    (intercalate)
+import Data.List    (intercalate,sortBy)
 import Data.Maybe   (isJust)
+import Data.Ord     (comparing)
 
 import Amelie.Types (PageName)
 import Amelie.Utils (replaceUnless)
@@ -25,7 +26,7 @@ rewritable = isJust . flip lookup rules
 -- | Rewrite rules for outgoing links.
 rules :: [(PageName,PageName -> [(String,String)] -> String)]
 rules = [("paste",rewritePaste),("raw",rewritePaste)] where
-  rewritePaste name params = case params of
+  rewritePaste name params = case sortBy (comparing fst) params of
     [("pid",pid'),("title",title)] 
       | name == "raw"   -> slashParts [name,pid',norm title]
       | name == "paste" -> slashParts [pid',norm title]
