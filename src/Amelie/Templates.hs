@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts, NamedFieldPuns #-}
 module Amelie.Templates where
 
-import           Control.Applicative        ((<$>),(<*>))
+import           Control.Applicative        ((<$>))
 import           Control.Monad.State        (MonadState)
 import           Control.Monad.State        (gets)
 import           Control.Monad.Trans        (MonadIO)
@@ -26,7 +26,7 @@ import           Text.Blaze.Renderer.Utf8   (renderHtml)
 
 import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Types               (State(..),Title,PageName,Config(..))
-import           Amelie.Utils               (l2s)
+import           Amelie.Utils               (l2s,text,sanitize)
 
 -- | Put a rendered page into its corresponding HTML template.
 template :: (Functor m,MonadState State m,MonadCGI m,MonadIO m)
@@ -40,8 +40,8 @@ template title' name ps inner = do
     case main of
       Right page' -> CGI.outputFPS page'
       Left err    -> maybe (errorPage err) (CGI.outputFPS . renderHtml) inner
-  where params = [("name",B.pack name)
-                 ,("title",B.pack $ encodeString title')]
+  where params = [("name",sanitize name)
+                 ,("title",sanitize title')]
                  ++ ps ++ renderedHtml
         renderedHtml = case inner of
           Just in' -> [("inner",l2s $ renderHtml in')]

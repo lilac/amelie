@@ -31,7 +31,7 @@ import           Amelie.Templates           (template,renderTemplate)
 import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
                                               Language(..))
-import           Amelie.Utils               (l2s)
+import           Amelie.Utils               (l2s,sanitize)
 
 -- | A CGI page of all pastes.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
@@ -70,7 +70,7 @@ renderPaste :: (MonadIO m, MonadState State m)
                -> m (Either String L.ByteString)
 renderPaste ps cl@(_,langs) paste@Paste{pid,title} = 
     renderTemplate "info_paste" params where
-  params = [("title",B.pack title)
+  params = [("title",sanitize title)
            ,("info",info)
            ,("paste",paste')]
   info = l2s $ renderHtml $ pasteInfoHtml lang cl paste
