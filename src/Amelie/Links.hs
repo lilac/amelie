@@ -28,19 +28,21 @@ rules :: [(PageName,PageName -> [(String,String)] -> String)]
 rules = [("paste",rewritePaste),("raw",rewritePaste)] where
   rewritePaste name params = case sortBy (comparing fst) params of
     [("annotation",aid),("pid",pid'),("title",title)] 
-      | name == "paste" -> slashParts [name,pid',norm title] ++ "#p" ++ aid
+      | name == "paste" -> slashParts [name,pid',norm $ limit title] ++ "#p" ++ aid
     [("pid",pid'),("title",title)] 
-      | name == "raw"   -> slashParts [name,pid',norm title]
-      | name == "paste" -> slashParts [pid',norm title]
+      | name == "raw"   -> slashParts [name,pid',norm $ limit title]
+      | name == "paste" -> slashParts [pid',norm $ limit title]
     [("pid",pid')]                 
       | name == "raw"   -> slashParts [name,pid']
       | name == "paste" -> slashParts [pid']
     _ -> rewriteBasic name params
+    where limit = take 40
 
 -- | Normalize a string.
 norm :: String -> String
-norm = map toLower . replaceUnless '_' valid where
+norm = map toLower . replaceUnless '_' valid . filter validOrSpace where
   valid c = any (==toLower c) $ "_" ++ ['a'..'z'] ++ ['0'..'9']
+  validOrSpace c = valid c || c == ' '
 
 -- | Join a list of string parts into a slash-separated string.
 slashParts :: [String] -> String
