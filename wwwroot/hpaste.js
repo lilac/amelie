@@ -165,13 +165,16 @@ function resize_text_box(){
 }
 
 function resize_code_container(){
-  var codeWidth = $('.sourceCode').width();
-  var container = $('.hpaste-paste');
-  var oldWidth = container.width();
-  var diff = codeWidth - oldWidth;
-  if (diff > 0) {
-    container.width(codeWidth);
-    $('#hpaste-wrap').width(codeWidth).css('max-width',codeWidth);
-    $('.hpaste-info').width(codeWidth);
-  }
+  $('.hpaste-wrap-fixed').each(function(){
+    var codeWidth = $('.sourceCode').width();
+    var container = $('.hpaste-paste');
+    var oldWidth = container.width();
+    var diff = codeWidth - oldWidth;
+    if (diff > 0) {
+      container.width(codeWidth);
+      $(this).width(codeWidth).css('max-width',codeWidth);
+      $('.hpaste-info').width(codeWidth);
+      $('.hpaste-create-new-paste').width(codeWidth);
+    }
+  });
 }
