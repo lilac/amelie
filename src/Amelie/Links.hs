@@ -25,18 +25,27 @@ rewritable = isJust . flip lookup rules
 
 -- | Rewrite rules for outgoing links.
 rules :: [(PageName,PageName -> [(String,String)] -> String)]
-rules = [("paste",rewritePaste),("raw",rewritePaste)] where
+rules = [("paste",rewritePaste),("raw",rewritePaste),("control",rewritePaste)] where
   rewritePaste name params = case sortBy (comparing fst) params of
+    [("pid",pid'),("title",title)]
+      | name == "control" -> rewriteBasic name [("pid",pid'),("title",flat title)]
     [("annotation",aid),("pid",pid'),("title",title)] 
-      | name == "paste" -> slashParts [name,pid',norm $ limit title] ++ "#p" ++ aid
+      | name == "paste" -> slashParts [name,pid',flat title] ++ "#p" ++ aid
     [("pid",pid'),("title",title)] 
-      | name == "raw"   -> slashParts [name,pid',norm $ limit title]
-      | name == "paste" -> slashParts [pid',norm $ limit title]
+      | name == "raw"   -> slashParts [name,pid',flat title]
+      | name == "paste" -> slashParts [pid',flat title]
     [("pid",pid')]                 
       | name == "raw"   -> slashParts [name,pid']
       | name == "paste" -> slashParts [pid']
     _ -> rewriteBasic name params
-    where limit = take 40
+
+-- | Flatten a string.
+flat :: String -> String
+flat = trim '_' . norm . take 30
+
+-- | Trim a string on either end.
+trim :: Char -> String -> String
+trim c = dropWhile (==c) . reverse . dropWhile (==c) . reverse
 
 -- | Normalize a string.
 norm :: String -> String
