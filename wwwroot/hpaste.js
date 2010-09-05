@@ -186,7 +186,10 @@ function resize_text_box(){
 
 function resize_code_container(){
   $('.hpaste-wrap-fixed').each(function(){
-    var codeWidth = $('.sourceCode').width();
+    var codeWidth = 0;
+    $('.sourceCode').each(function(){
+      codeWidth = Math.max(codeWidth,$(this).width());
+    });
     var container = $('.hpaste-paste');
     var oldWidth = container.width();
     var diff = codeWidth - oldWidth;
