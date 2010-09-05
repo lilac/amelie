@@ -171,7 +171,7 @@ function resize_code_container(){
   var diff = codeWidth - oldWidth;
   if (diff > 0) {
     container.width(codeWidth);
-    $('.hpaste-wrap').width(codeWidth).css('max-width',codeWidth);
+    $('#hpaste-wrap').width(codeWidth).css('max-width',codeWidth);
     $('.hpaste-info').width(codeWidth);
   }
 }
