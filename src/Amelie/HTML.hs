@@ -68,14 +68,13 @@ pasteInfoHtml lang cl paste@Paste{..} an_of = do
             maybe mempty (def "Annotation of" . annotation) an_of
             def "Author" $ text author
             maybe mempty (def "Channel" . text . chanName) channel
-            def "Created" $ H.span ! aid "created" $ text creationDate
+            def "Created" $ H.span ! A.class_ "utctime" $ text creationDate
             def "Raw" $ href (self "raw") $ text "View raw file"
             def "Language" (displayLangSwitcher lang cl paste)
               ! A.class_ "lang-switch"
             def "Manage" $ href (self "control") "Edit this paste"
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         attr f a = f (H.stringValue a)
-        aid = A.id -- To appease hlint, for now.
         self typ = link typ [("pid",show pid),("title",title)]
         href l c = H.a ! A.href (H.stringValue l) $ c
         creationDate = fromMaybe "" $ fmap formatUTC created

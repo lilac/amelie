@@ -4,8 +4,8 @@ String.prototype.trim = function(){
 
 $(document).ready(function(){
   // Update dates to show local times
-  update_dates('#created');
-  update_dates('.utctime',true);
+  update_dates('.hpaste-latest-pastes .utctime',true);
+  update_dates('.hpaste-info .utctime',false);
   // Resize paste box appropriately
   resize_text_box();
   // Create a copy of the submit button that is more convenient
