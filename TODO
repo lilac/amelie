@@ -6,11 +6,10 @@
 * DONE: Ab benchmarks? 20r/s
 * DONE: Upload and setup on tryhaskell.org
 * DONE: Viewer can select the viewing type
-* DOEN: Annotations
-
-* Fluid width by default
-* Fixed width with button to make fluid
-* Give logo a height to stop it jumping.
+* DONE: Annotations
+* DONE: Fluid width by default
+* DONE: Give logo a height to stop it jumping.
+* DONE: Fixed width with button to make fluid
 
 * Sessions for quickly editing mistakes for just-posted hpastes
 * Checkbox for pastes being editable by anyone

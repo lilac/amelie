@@ -21,6 +21,26 @@ $(document).ready(function(){
   display_switch();
 });
 
+function layout_switcher() {
+  var span =
+    $('<span id="hpaste-choose-layout" href="javascript:">Layout: </span>');
+  var select = $('<select><option>Thin</option><option>Wide</option></select>');
+  span.append(select);
+  $('.hpaste-nav').append(span);
+  if ($.cookie('hpaste-layout')) select.val($.cookie('hpaste-layout'));
+  select.each(changeLayout);
+  select.change(changeLayout);
+  function changeLayout() {
+    var choice = $(this).val();
+    $.cookie('hpaste-layout',choice);
+    if (choice == 'Thin') {
+      $('#hpaste-wrap').attr('class','hpaste-wrap-fixed');
+    } else if (choice == 'Wide') {
+      $('#hpaste-wrap').attr('class','hpaste-wrap');
+    }
+  }
+}
+
 function display_switch(){
   $('.lang-switcher').each(function(){
     var s = $(this);

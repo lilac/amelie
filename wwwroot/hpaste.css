@@ -55,6 +55,11 @@ div.hpaste-black-section {
 div.hpaste-black-section a {
     color: #8ae0c2
 }
+.hpaste-nav { float: right; }
+#hpaste-choose-layout {
+    font-size:0.9em;
+    float:right;
+}
 
 /******************************************************************************
  * Side-wide styles
