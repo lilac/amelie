@@ -28,7 +28,7 @@ div.hpaste-wrap {
 }
 div.hpaste-wrap-fixed { 
     padding: 20px;
-    width: 48em;
+    max-width: 48em;
     margin-left: auto;
     margin-right: auto;
 }
