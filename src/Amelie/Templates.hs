@@ -15,7 +15,6 @@ import           Data.Char                  (toUpper)
 import           Data.List                  (foldl')
 import           System.Directory           (doesFileExist)
 
-import           Codec.Binary.UTF8.String   (encodeString)
 import           Data.ByteString.Search     (replace)
 import           Network.CGI                (CGIResult)
 import qualified Network.CGI                as CGI
@@ -26,7 +25,7 @@ import           Text.Blaze.Renderer.Utf8   (renderHtml)
 
 import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Types               (State(..),Title,PageName,Config(..))
-import           Amelie.Utils               (l2s,text,sanitize)
+import           Amelie.Utils               (l2s,sanitize)
 
 -- | Put a rendered page into its corresponding HTML template.
 template :: (Functor m,MonadState State m,MonadCGI m,MonadIO m)

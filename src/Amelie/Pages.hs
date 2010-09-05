@@ -4,6 +4,7 @@ module Amelie.Pages where
 import           Control.Applicative        ((<$>))
 import           Control.Applicative.Error  (Failing(..))
 import           Control.Arrow              ((***))
+import           Control.Monad              (mplus)
 import           Control.Monad.State        (MonadState)
 import           Control.Monad.Trans        (MonadIO)
 import           Data.List                  (find)
@@ -30,7 +31,7 @@ import           Amelie.Templates           (template,renderTemplate)
 import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
                                               Language(..))
-import           Amelie.Utils               (l2s,text)
+import           Amelie.Utils               (l2s,text,failingToMaybe)
 
 -- | A CGI page of all pastes.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
@@ -124,25 +125,27 @@ editCreatePastePage params cl = do
   inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
   submitted <- isJust <$> CGI.getInput "submit"
   annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"
-  let edit = lookup "pid" params >>= readMay
+  let (result,_) = pasteForm Nothing cl inputs  
+      edit = (lookup "pid" params >>= readMay) `mplus` (pid <$> failingToMaybe result)
   epaste <- case edit of
     Just eid -> db $ DB.pasteById eid cl
     Nothing  -> return Nothing
-  let (result,formHtml) = pasteForm epaste cl inputs
+  let (_,formHtml) = pasteForm epaste cl inputs  
   case result of
     Failure errs -> let title | isJust epaste = "Edit paste" 
                               | otherwise     = "New paste"
                     in pageWithErrors title errs formHtml submitted
-    Success paste -> do pid' <- insertOrUpdate paste annotation_of
-                        let pasteid = fromMaybe pid' annotation_of
-                        CGI.redirect $ link "paste" $ 
-                          [("pid",show pasteid)
-                          ,("title",title paste)]
-                          ++ [("annotation",show pid') | isJust annotation_of]
+    Success paste -> do
+      pid' <- insertOrUpdate (fromMaybe paste epaste) paste annotation_of
+      let pasteid = fromMaybe pid' annotation_of
+      CGI.redirect $ link "paste" $ 
+        [("pid",show pasteid)
+        ,("title",title paste)]
+        ++ [("annotation",show pid') | isJust annotation_of]
   where pageWithErrors title errs form submitted =
           template title "control" [] $ Just $
             controlPasteHtml title (Just (submitted,errs)) form Nothing
-        insertOrUpdate paste@Paste{pid} an_of =
+        insertOrUpdate _old@Paste{annotation_of=an} paste@Paste{pid} an_of =
           if pid > 0
-             then do db $ DB.updatePaste paste; return pid
+             then do db $ DB.updatePaste paste{annotation_of=an}; return pid
              else db $ DB.createPaste paste an_of
