@@ -19,7 +19,6 @@ import           Data.Time                   (UTCTime,formatTime)
 import           Safe                        (readMay)
 import           System.Locale               (defaultTimeLocale)
 
-import qualified Data.List.Utils             as List (replace)
 import           Data.Text                   (pack)
 import           Data.Time.Instances         ()
 import           Text.Blaze.Html5            ((!))
@@ -109,7 +108,7 @@ pastePasteHtml paste@Paste{..} lang = do
   H.style $ text highlightCSS
   H.div $ H.preEscapedString $ fromMaybe (plain $ Html.thecode << content) $ 
     pasteHighlightedHtml paste lang
-    where plain = List.replace "\n" "<br>" . Html.showHtmlFragment
+    where plain = (\x -> "<pre>" ++ x ++ "</pre>") . Html.showHtmlFragment
 
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
