@@ -102,6 +102,14 @@ allPastesLimitBy limit = do
   reverse <$> pastesByQuery cl (unwords ["WHERE annotation_of IS NULL"
                                         ,"ORDER BY id DESC LIMIT " ++ show limit])
 
+-- | Retrieve all pastes limit by a row count.
+allPastesLimitWithOffset :: Integer -> Integer -> DBM mark Session [Paste]
+allPastesLimitWithOffset limit offset = do
+  cl <- chansAndLangs
+  reverse <$> pastesByQuery cl (unwords ["WHERE annotation_of IS NULL"
+                                        ,"ORDER BY id DESC LIMIT " ++ show limit
+                                        ,"OFFSET " ++ show ((offset-1) * limit)])
+
 -- | Retrieve all channels.
 allChannels :: DBM mark Session [Channel]
 allChannels = DB.doQuery (DB.sql q) makeChannel [] where

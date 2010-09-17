@@ -31,6 +31,7 @@ router = do
   CGI.setHeader "Content-Type" "text/html; charset=UTF-8"
   case name of
     "paste"   -> cls $ Pages.pastePage params
+    "browse"  -> cls $ Pages.browsePage params
     "raw"     -> cls $ Pages.rawPastePage params
     "control" -> cls $ Pages.editCreatePastePage params
     _         -> Pages.pastesPage

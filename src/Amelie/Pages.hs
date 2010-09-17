@@ -1,12 +1,16 @@
-{-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings, FlexibleInstances #-}
 module Amelie.Pages where
 
+import           Control.Applicative        (Applicative(..))
 import           Control.Applicative        ((<$>))
 import           Control.Applicative.Error  (Failing(..))
 import           Control.Arrow              ((***))
-import           Control.Monad              (mplus)
+import           Control.Monad              (mplus,ap)
+import           Control.Monad.Reader       (ReaderT)
+import           Control.Monad.Reader       (runReaderT,ask)
 import           Control.Monad.State        (MonadState)
 import           Control.Monad.Trans        (MonadIO)
+import           Control.Monad.Trans        (lift)
 import           Data.List                  (find)
 import           Data.Maybe                 (isJust,fromMaybe)
 
@@ -24,16 +28,16 @@ import           Amelie.DB                  (db)
 import qualified Amelie.DB                  as DB
 import           Amelie.HTML                 (pasteForm,pastesHtmlTable
                                              ,pasteInfoHtml,pastePasteHtml
-                                             ,controlPasteHtml)
+                                             ,controlPasteHtml,prevNext)
 import           Amelie.Links               (link)
 import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Templates           (template,renderTemplate)
 import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
-                                              Language(..))
+                                              Language(..),Channel(..))
 import           Amelie.Utils               (l2s,text,failingToMaybe)
 
--- | A CGI page of all pastes.
+-- | A CGI page of recent pastes and paste form.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
               => m CGIResult
 pastesPage = do
@@ -47,6 +51,21 @@ pastesPage = do
            [("latest_pastes",latestPastes)
            ,("new_paste_form",newPasteForm)]
            Nothing
+
+-- | A CGI page of all pastes.
+browsePage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
+              => [(String,String)] -> ChansAndLangs -> m CGIResult
+browsePage params _cl = do
+    pastes <- db $ DB.allPastesLimitWithOffset limit page
+    let latestPastes = l2s $ renderHtml $ do
+          nav; pastesHtmlTable pastes; nav
+    template "All Pastes" "browse" 
+             [("pastes",latestPastes)]
+             Nothing
+  where int i n = maybe i (max 1) $ lookup n params >>= readMay
+        limit = int 30 "limit"
+        page = int 1 "page"
+        nav = prevNext "browse" limit page
 
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
@@ -145,7 +164,41 @@ editCreatePastePage params cl = do
   where pageWithErrors title errs form submitted =
           template title "control" [] $ Just $
             controlPasteHtml title (Just (submitted,errs)) form Nothing
-        insertOrUpdate _old@Paste{annotation_of=an} paste@Paste{pid} an_of =
-          if pid > 0
-             then do db $ DB.updatePaste paste{annotation_of=an}; return pid
-             else db $ DB.createPaste paste an_of
+
+instance Applicative (ReaderT [(String,String)] Maybe) where
+  (<*>) = ap; pure = return
+
+apiPost :: (Functor m,MonadIO m,MonadCGI m,MonadState State m) =>
+           [(String,String)] -> ChansAndLangs -> m CGIResult
+apiPost _ cl@(cs,ls) = do
+  params <- map (decodeString *** decodeString) <$> CGI.getInputs
+  let input n = do ps <- ask; lift $ lookup n ps
+      paste = flip runReaderT params $
+        Paste <$> (input "pid" >>= lift . readMay)
+              <*> input "title"
+              <*> input "author"
+              <*> (input "language" >>= lift . readMay >>= lift . Just . look lid ls)
+              <*> (input "channel" >>= lift . readMay >>= lift . Just . look cid cs)
+              <*> input "paste"
+              <*> return []
+              <*> return Nothing
+             <*> return Nothing
+  annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"
+  epaste <- case pid <$> paste of
+    Just eid -> db $ DB.pasteById eid cl
+    Nothing  -> return Nothing
+  case paste of
+    Nothing -> CGI.output "invalid parameters"
+    Just paste' -> do
+      pid' <- insertOrUpdate (fromMaybe paste' epaste) paste' annotation_of
+      CGI.output $ show pid'
+
+look acc xs x = find ((==x).acc) xs
+  
+insertOrUpdate
+  :: (MonadState State m, MonadIO m) =>
+     Paste -> Paste -> Maybe Int -> m Int
+insertOrUpdate _old@Paste{annotation_of=an} paste@Paste{pid} an_of =
+  if pid > 0
+     then do db $ DB.updatePaste paste{annotation_of=an}; return pid
+     else db $ DB.createPaste paste an_of

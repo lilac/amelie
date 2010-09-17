@@ -46,7 +46,8 @@ pastesListHtml = H.ul . mconcat . map pasteLi where
 
 -- | HTML table representation of a pastes list.
 pastesHtmlTable :: [Paste] -> H.Html
-pastesHtmlTable = table . H.tbody . mconcat . map pasteRowHtml where
+pastesHtmlTable [] = mempty
+pastesHtmlTable ps = table . H.tbody . mconcat . map pasteRowHtml $ ps where
   table tbody = H.table $ do thead; tbody
   thead = H.thead $ H.tr $ mconcat $ map (H.th . text) fields
   fields = ["Title","Author","When","Language","Channel"]
@@ -110,6 +111,17 @@ pastePasteHtml paste@Paste{..} lang = do
   H.div $ H.preEscapedString $ fromMaybe (plain $ Html.thecode << content) $ 
     pasteHighlightedHtml paste lang
     where plain = (\x -> "<pre>" ++ x ++ "</pre>") . Html.showHtmlFragment
+          
+-- | Previous/next Navigation.
+prevNext :: String -> Integer -> Integer -> H.Html
+prevNext page limit n = H.ul ! A.class_ "pagination" $ do prev; next where
+  prev | n > 1     = go "prev" "Prev" (-1)
+       | otherwise = mempty
+  next = go "next" "Next" 1
+  go :: H.AttributeValue -> H.Html -> Integer -> H.Html
+  go cl caption m = H.li $ H.a ! A.class_ cl ! A.href href $ caption
+     where href = H.stringValue $              
+             link page [("limit",show limit),("page",show $ max 1 $ m + n)]
 
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)

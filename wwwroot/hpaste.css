@@ -17,6 +17,9 @@ li {
 a { 
     text-decoration: none; 
 }
+a:hover {
+    text-decoration:underline;
+}
 
 /******************************************************************************
  * Side-wide layout
@@ -124,6 +127,10 @@ div.hpaste-latest-pastes table th {
     text-align: left;
     font-weight: bold;
 }
+p.hpaste-browse-all a {
+    font-size:12px;
+    color: white;
+}
 
 /******************************************************************************
  * pastes.html/new.html
@@ -219,3 +226,10 @@ h2.annotations {
     margin-top: 10px;
 }
 li.lang-switch + li { clear: both; }
+
+/******************************************************************************
+ * browse.html
+ */
+ul.pagination { font-size:12px; }
+ul.pagination li { display:inline; }
+ul.pagination li + li { padding-left:1em; }
