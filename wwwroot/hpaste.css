@@ -169,6 +169,11 @@ div.hpaste-new-paste-form .submit {
     float: left;
     padding: 5px 10px 5px 10px;
 }
+div.hpaste-new-paste-form .preview {
+    margin: 15px 5px 5px 5px;
+    float: left;
+    padding: 5px 10px 5px 10px;
+}
 div.hpaste-create-new-paste {
     position:relative;
 }

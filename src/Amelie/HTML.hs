@@ -142,11 +142,17 @@ controlPasteHtml title s form annotation_of = do
     H.preEscapedString form
     H.input ! A.type_ "text" ! A.name "email" ! A.value "" ! A.class_ "email"
     H.input ! A.type_ "submit" ! A.value (H.stringValue title) ! A.class_ "submit"
+    H.input ! A.type_ "submit" ! A.value (H.stringValue "Preview") ! A.class_ "preview"
+            ! A.name "preview"
     H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
     maybe mempty annotate annotation_of
   where annotate p =
           H.input ! A.type_ "hidden" ! A.value (H.stringValue $ show p) 
                   ! A.name "annotation_of"
+
+-- | Preview the highlighted paste.
+pastePreview :: Paste -> H.Html
+pastePreview p = pastePasteHtml p Nothing
 
 -- | A form for controlling pastes; creating, editing.
 pasteForm :: Maybe Paste -> ChansAndLangs -> [(String,String)]
