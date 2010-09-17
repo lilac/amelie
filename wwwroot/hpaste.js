@@ -174,7 +174,7 @@ function resize_text_box(){
     var interval;
     function update_size(){
       if (!interval) {
-        setInterval(function(){
+        interval = setInterval(function(){
           var str = textarea.val();
           if (str != last) {
             update_size();
