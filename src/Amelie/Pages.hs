@@ -142,6 +142,14 @@ asPastePage run ps cl =
 editCreatePastePage :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
              => [(String,String)] -> ChansAndLangs -> m CGIResult
 editCreatePastePage params cl = do
+  spamTrap <- CGI.getInput "email"
+  case spamTrap of
+    Just "" -> editCreatePaste params cl
+    _       -> CGI.outputNothing
+  
+editCreatePaste :: (Functor m,MonadIO m,MonadCGI m,MonadState State m)
+             => [(String,String)] -> ChansAndLangs -> m CGIResult
+editCreatePaste params cl = do
   inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
   submitted <- isJust <$> CGI.getInput "submit"
   annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"

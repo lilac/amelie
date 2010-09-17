@@ -140,6 +140,7 @@ controlPasteHtml title s form annotation_of = do
     _ -> mempty
   H.form ! A.method "post" ! A.action "/control" $ do
     H.preEscapedString form
+    H.input ! A.type_ "text" ! A.name "email" ! A.value "" ! A.class_ "email"
     H.input ! A.type_ "submit" ! A.value (H.stringValue title) ! A.class_ "submit"
     H.input ! A.type_ "hidden" ! A.value "true" ! A.name "submit"
     maybe mempty annotate annotation_of

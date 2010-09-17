@@ -138,6 +138,9 @@ div.hpaste-latest-pastes .pagination + p {
 /******************************************************************************
  * pastes.html/new.html
  */
+div.hpaste-new-paste-form input.email {
+    display:none;
+}
 div.hpaste-new-paste-form form li {
     margin-bottom: 3px;
 }
