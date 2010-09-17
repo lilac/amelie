@@ -4,3 +4,5 @@ httpd/*.pid
 *.hi
 *.o
 amelie.conf
+scrape/
+logs/
