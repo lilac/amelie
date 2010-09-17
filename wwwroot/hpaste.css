@@ -127,9 +127,12 @@ div.hpaste-latest-pastes table th {
     text-align: left;
     font-weight: bold;
 }
-p.hpaste-browse-all a {
+div.hpaste-latest-pastes p,div.hpaste-latest-pastes p a {
     font-size:12px;
     color: white;
+}
+div.hpaste-latest-pastes .pagination + p {
+    margin: 10px;
 }
 
 /******************************************************************************
@@ -231,5 +234,6 @@ li.lang-switch + li { clear: both; }
  * browse.html
  */
 ul.pagination { font-size:12px; }
-ul.pagination li { display:inline; }
-ul.pagination li + li { padding-left:1em; }
+ul.pagination + table { margin-top:10px; }
+ul.pagination li.next { float: right; }
+ul.pagination li.prev { float: left; }

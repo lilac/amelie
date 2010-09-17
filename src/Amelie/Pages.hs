@@ -57,7 +57,8 @@ browsePage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
               => [(String,String)] -> ChansAndLangs -> m CGIResult
 browsePage params _cl = do
     pastes <- db $ DB.allPastesLimitWithOffset limit page
-    let latestPastes = l2s $ renderHtml $ do
+    let nav = prevNext "browse" limit page (not $ null pastes)
+        latestPastes = l2s $ renderHtml $ do
           nav; pastesHtmlTable pastes; nav
     template "All Pastes" "browse" 
              [("pastes",latestPastes)]
@@ -65,7 +66,7 @@ browsePage params _cl = do
   where int i n = maybe i (max 1) $ lookup n params >>= readMay
         limit = int 30 "limit"
         page = int 1 "page"
-        nav = prevNext "browse" limit page
+        
 
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult

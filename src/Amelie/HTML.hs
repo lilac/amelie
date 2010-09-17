@@ -8,7 +8,7 @@ import           Control.Applicative         (Applicative)
 import           Control.Applicative         (pure,(<$>),(<*>),(*>))
 import           Control.Applicative.Error   (Failing(..))
 import           Control.Arrow               (second)
-import           Control.Monad               (ap)
+import           Control.Monad               (ap,when)
 import           Control.Monad               (mplus)
 import           Control.Monad.Identity      (Identity)
 import           Control.Monad.Identity      (runIdentity)
@@ -46,7 +46,7 @@ pastesListHtml = H.ul . mconcat . map pasteLi where
 
 -- | HTML table representation of a pastes list.
 pastesHtmlTable :: [Paste] -> H.Html
-pastesHtmlTable [] = mempty
+pastesHtmlTable [] = H.p "Nothing to see here! Move along!"
 pastesHtmlTable ps = table . H.tbody . mconcat . map pasteRowHtml $ ps where
   table tbody = H.table $ do thead; tbody
   thead = H.thead $ H.tr $ mconcat $ map (H.th . text) fields
@@ -113,15 +113,17 @@ pastePasteHtml paste@Paste{..} lang = do
     where plain = (\x -> "<pre>" ++ x ++ "</pre>") . Html.showHtmlFragment
           
 -- | Previous/next Navigation.
-prevNext :: String -> Integer -> Integer -> H.Html
-prevNext page limit n = H.ul ! A.class_ "pagination" $ do prev; next where
-  prev | n > 1     = go "prev" "Prev" (-1)
-       | otherwise = mempty
-  next = go "next" "Next" 1
-  go :: H.AttributeValue -> H.Html -> Integer -> H.Html
-  go cl caption m = H.li $ H.a ! A.class_ cl ! A.href href $ caption
-     where href = H.stringValue $              
-             link page [("limit",show limit),("page",show $ max 1 $ m + n)]
+prevNext :: String -> Integer -> Integer -> Bool -> H.Html
+prevNext page limit n showNext =
+  H.ul ! A.class_ "pagination" $ do prev; when showNext next; clr where
+    prev | n > 1     = go "prev" "Prev" (-1)
+         | otherwise = mempty
+    next = go "next" "Next" 1
+    clr = H.div ! A.class_ "hpaste-clear" $ mempty
+    go :: H.AttributeValue -> H.Html -> Integer -> H.Html
+    go cl caption m = H.li ! A.class_ cl $ H.a ! A.href href $ caption
+       where href = H.stringValue $              
+               link page [("limit",show limit),("page",show $ max 1 $ m + n)]
 
 -- | An identity monad for running forms, with Applicative instance.
 newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
