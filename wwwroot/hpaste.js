@@ -169,18 +169,22 @@ function resize_text_box(){
   $('div.hpaste-new-paste-form textarea').each(function(){
     var textarea = $(this);
     textarea.keydown(update_size);
+    textarea.change(update_size);
     var last = '';
+    var interval;
     function update_size(){
+      if (!interval) {
+        setInterval(function(){
+          var str = textarea.val();
+          if (str != last) {
+            update_size();
+          }
+        },200);
+      }
       var str = textarea.val();
       var lines = str.length - str.replace(/\n/g,'').length;
       textarea.attr('rows',Math.min(70,Math.max(15,lines+1)));
     }
-    setInterval(function(){
-      var str = textarea.val();
-      if (str != last) {
-        update_size();
-      }
-    },200);
   });
 }
 
