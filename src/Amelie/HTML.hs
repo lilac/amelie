@@ -13,6 +13,7 @@ import           Control.Monad               (mplus)
 import           Control.Monad.Identity      (Identity)
 import           Control.Monad.Identity      (runIdentity)
 import           Data.List                   (find)
+import           Data.Char                   (isSpace)
 import           Data.Maybe                  (fromMaybe)
 import           Data.Monoid                 (mconcat,mempty)
 import           Data.Time                   (UTCTime,formatTime)
@@ -71,7 +72,7 @@ pasteInfoHtml lang cl paste@Paste{..} an_of = do
             def "Raw" $ href (self "raw") $ text "View raw file"
             def "Language" (displayLangSwitcher lang cl paste)
               ! A.class_ "lang-switch"
-            def "Manage" $ href (self "control") "Edit this paste"
+--            def "Manage" $ href (self "control") "Edit this paste"
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         attr f a = f (H.stringValue a)
         self typ = link typ [("pid",show pid),("title",title)]
@@ -160,7 +161,7 @@ pasteForm paste (chans,langs) inputs =
   makeChanChoice Channel{cid,chanName} = (cid,chanName)
   pasteInput c = X.plug Html.thediv $ XH.textarea (Just 10) (Just 50) c
   clean = filter (/='\r')
-  nempty = not . null
+  nempty = not . null . filter (not . isSpace)
   we = const True
 
 -- | Embed the id of the paste we're editing in the form.
