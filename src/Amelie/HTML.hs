@@ -164,11 +164,11 @@ pasteForm paste (chans,langs) inputs =
   env = map (second Left) inputs
   form = X.plug Html.ulist $ 
      Paste <$> (fromMaybe 0 . (>>=readMay) <$> editId paste)
-           <*> label "Title"    nempty (XH.input $ title <$> paste)
-           <*> label "Author"   nempty (XH.input $ author <$> paste)
-           <*> label "Language" we languageInput
-           <*> label "Channel"  we channelInput
-           <*> label "Paste"    nempty (clean <$> pasteInput (content <$> paste))
+           <*> label "Title"    True nempty (XH.input $ title <$> paste)
+           <*> label "Author"   True nempty (XH.input $ author <$> paste)
+           <*> label "Language" False we languageInput
+           <*> label "Channel"  False we channelInput
+           <*> label "Paste"    True nempty (clean <$> pasteInput (content <$> paste))
            <*> pure []
            <*> pure Nothing
            <*> pure Nothing
@@ -196,8 +196,9 @@ editId pid = XH.optionalInput $ \name ->
 
 -- | Label an input and apply a predicate to it for making inputs required.
 label :: (Show a,Monad m,Applicative m) =>
-          String -> (a -> Bool) -> X.Form Html.Html m a -> X.Form Html.Html m a
-label caption p inp = li $ label' *> (inp `X.check` X.ensure p msg) where
-  label' = XH.label (caption ++ ": ")
+          String -> Bool -> (a -> Bool) -> X.Form Html.Html m a -> X.Form Html.Html m a
+label caption req p inp = li $ (inp `X.check` X.ensure p msg) where
   msg = caption ++ ": must be provided"
-  li = X.plug Html.li
+  li = X.plug $ \xml -> Html.li << [l,xml] where
+    l = Html.label << [star,Html.toHtml $ caption ++ ":"]
+    star = if req then Html.thespan << ("*"::String) else Html.noHtml

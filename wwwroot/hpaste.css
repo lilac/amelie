@@ -147,6 +147,9 @@ div.hpaste-new-paste-form form li {
 div.hpaste-new-paste-form form {
     padding: 0;
 }
+div.hpaste-new-paste-form form li label span {
+    color: red;
+}
 div.hpaste-new-paste-form form li label {
     display: block;
     float: left;
