@@ -32,7 +32,7 @@ nginx a = badarg a
 
 fastcgi :: String -> IO ()
 fastcgi "start" = fpid not $ do
-  system $ "spawn-fcgi dist/build/amelie.fcgi/amelie.fcgi -p 8001 -P " ++ fppath
+  system $ "spawn-fcgi dist/build/amelie.fcgi/amelie.fcgi -p 9001 -P " ++ fppath
 fastcgi "stop" = fpid id $ do
   system $ "kill `cat " ++ fppath ++ "`"
   fastcgi "clean"
