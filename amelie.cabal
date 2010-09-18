@@ -10,7 +10,13 @@ Maintainer:          chrisdone@gmail.com
 Copyright:           2010 Chris Done 
 Category:            Web
 Build-type:          Custom
-Extra-source-files:  README
+Extra-source-files:  README.md, amelie.conf.example, httpd/nginx.conf, amelie.dump,
+                     templates/browse.html,templates/control.html,
+                     templates/info_paste.html,templates/paste.html,templates/pastes.html,
+                     templates/template.html,
+                     wwwroot/hpaste.css,wwwroot/hpaste.js,wwwroot/hpaste.png,
+                     wwwroot/input-bg.png,wwwroot/jquery-1.4.2.min.js,
+                     wwwroot/jquery.cookie.js
 Cabal-version:       >=1.2
 
 Executable amelie.fcgi
