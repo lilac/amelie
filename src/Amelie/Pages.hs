@@ -117,28 +117,30 @@ renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title,language} =
   if not haskellp
      then renderTemplate "info_paste" $ params ""
      else do
-       hints <- hlintHints paste
+       hints <- hlintHints paste {language=lang}
        let html = l2s $ renderHtml $ hintsToHTML hints
            name | null hints = "info_paste"
                 | otherwise  = "info_paste_hlint"
        renderTemplate name $ params html
   where
-  haskellp = (map toLower . langName <$> language) == Just "haskell"
+  haskellp = let l = langName <$> lang
+             in l == Just "haskell" || l == Just "literatehaskell"
   params hints =
     [("title",l2s . renderHtml . text $ title)
     ,("info",info)
     ,("paste",paste')]
     ++
     [("hints",hints) | haskellp]
-  info = l2s $ renderHtml $ pasteInfoHtml lang cl paste annotation_of
+  info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste annotation_of
   paste' = l2s $ renderHtml $ pastePasteHtml paste lang
-  lang = lookup lparam ps >>= \name -> find ((==name) . langName) langs
+  lang = (\l->l{langName=map toLower $ langName l}) <$> (lang' `mplus` language)
+  lang' = lookup lparam ps >>= \name -> find ((==name) . langName) langs
   lparam = "lang_" ++ show pid
 
 -- | Generate HLint hints for a source.
 hlintHints :: (MonadIO m,MonadState State m) =>
-                  Paste -> m [Suggestion]
-hlintHints Paste{pid,content} = do
+              Paste -> m [Suggestion]
+hlintHints Paste{pid,content,language=l} = do
     -- This is kind of annoying, I have to prepare a temporary file
     -- for hlint to eat. The alternative is to run hlint as a pipe
     -- if that works, but I don't feel like doing that, nor do I
@@ -146,7 +148,9 @@ hlintHints Paste{pid,content} = do
     -- version. Maybe Neil will kindly provide an interface in
     -- which I can provide the source directly.
     pastesDir <- gets $ pastesDir . config
-    let path = pastesDir </> show pid ++ ".hs"
+    let ext | (langName <$> l) == Just "haskell" = "hs" 
+--            | otherwise                          = "lhs" -- This throws a hlint error.
+        path = pastesDir </> show pid ++ "." ++ ext
     exists <- liftIO $ doesFileExist path
     liftIO $ unless exists $ writeFile path content
     filter (not . boring) `liftM` liftIO (hlint [path,"--quiet"])
