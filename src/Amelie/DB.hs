@@ -52,8 +52,9 @@ createPaste paste annotation_of =
 -- | Insert a new paste.
 insertPaste :: Paste -> Maybe Int -> DBM mark Session ()
 insertPaste Paste{..} an_of = DB.execDDL (DB.cmdbind stmt params) where
-  stmt = unwords ["insert into paste (" ++ fieldsSpec ++ ")"
-                 ,"values (" ++ values ++ ")"]
+  stmt = unwords ["insert into paste (" ++ fieldsSpec ++ ",expire)"
+                 ,"values (" ++ values ++ "," ++ expires ++ ")"]
+  expires = if expire then "now()+interval '1 hour'" else "NULL"
   fieldsSpec = intercalate "," $ map fst fields
   params = map snd fields
   values = intercalate "," $ map (const "?") fields
@@ -157,8 +158,9 @@ pastesByAnnotationOf p cl = pastesByQuery cl $
 pastesByQuery :: ChansAndLangs -> String -> DBM mark Session [Paste]
 pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
   query = "select " ++ fields ++ " from paste " ++ cond
-  fields = "id,title,content,tags,author,language,channel,created at time zone 'utc',annotation_of"
-  makePaste pid' title' content' tags' author' lang' chan' created' an_of xs =
+  fields = "id,title,content,tags,author,language,channel," ++
+           "created at time zone 'utc',annotation_of,expire is null"
+  makePaste pid' title' content' tags' author' lang' chan' created' an_of expires xs =
     DB.result' (paste:xs) where
       paste = Paste { pid = pid'
                     , title    = title'
@@ -167,6 +169,7 @@ pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
                     , author   = author'
                     , language = lang' >>= \lid' -> find ((==lid').lid) langs
                     , channel  = chan' >>= \cid' -> find ((==cid').cid) chans
+                    , expire   = expires
                     , created  = Just created'
                     , annotation_of = an_of
                     }

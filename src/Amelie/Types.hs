@@ -22,6 +22,7 @@ data Paste =
         , language      :: Maybe Language -- ^ Language (if any) of the paste.
         , channel       :: Maybe Channel  -- ^ Associated IRC channel (if any).
         , content       :: Content        -- ^ Raw content of the paste.
+        , expire        :: Bool           -- ^ Expires one hour after created?
         , tags          :: [Tag]          -- ^ Tags/keywords for the paste.
         , created       :: Maybe UTCTime  -- ^ When the paste was created.
         , annotation_of :: Maybe Int      -- ^ Paste which this annotates.

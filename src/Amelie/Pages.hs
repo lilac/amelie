@@ -156,6 +156,7 @@ editCreatePaste params cl = do
   submitted <- isJust <$> CGI.getInput "submit"
   preview <- isJust <$> CGI.getInput "preview"
   annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"
+  expirep <- isJust <$> CGI.getInput "expire"
   let (result,_) = pasteForm Nothing cl inputs  
       edit = (lookup "pid" params >>= readMay) `mplus` (pid <$> failingToMaybe result)
   epaste <- case edit of
@@ -169,7 +170,8 @@ editCreatePaste params cl = do
     Success paste
       | preview -> pasteErrsOrPreview title' [] formHtml submitted (Just paste)
       | otherwise -> do
-        pid' <- insertOrUpdate (fromMaybe paste epaste) paste annotation_of
+        let paste' = paste { expire = expirep }
+        pid' <- insertOrUpdate (fromMaybe paste epaste) paste' annotation_of
         let pasteid = fromMaybe pid' annotation_of
         CGI.redirect $ link "paste" $ 
           [("pid",show pasteid)
@@ -202,9 +204,10 @@ apiPost _ cl@(cs,ls) = do
               <*> (input "language" >>= lift . readMay >>= lift . Just . look lid ls)
               <*> (input "channel" >>= lift . readMay >>= lift . Just . look cid cs)
               <*> input "paste"
+              <*> return False
               <*> return []
               <*> return Nothing
-             <*> return Nothing
+              <*> return Nothing
   annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"
   epaste <- case pid <$> paste of
     Just eid -> db $ DB.pasteById eid cl

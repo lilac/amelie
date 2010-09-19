@@ -142,6 +142,9 @@ controlPasteHtml title s form annotation_of = do
   H.form ! A.method "post" ! A.action "/control" $ do
     H.preEscapedString form
     H.input ! A.type_ "text" ! A.name "email" ! A.value "" ! A.class_ "email"
+    H.div ! A.class_ "expire" $ do
+      H.input ! A.type_ "checkbox" ! A.name "expire"
+      H.span $ H.text "Expire in an hour?"
     H.input ! A.type_ "submit" ! A.value (H.stringValue title) ! A.class_ "submit"
     H.input ! A.type_ "submit" ! A.value (H.stringValue "Preview") ! A.class_ "preview"
             ! A.name "preview"
@@ -170,6 +173,7 @@ pasteForm paste (chans,langs) inputs =
            <*> label "Language" False we languageInput
            <*> label "Channel"  False we channelInput
            <*> label "Paste"    True nempty (clean <$> pasteInput (content <$> paste))
+           <*> pure False
            <*> pure []
            <*> pure Nothing
            <*> pure Nothing
