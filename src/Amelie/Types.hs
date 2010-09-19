@@ -64,6 +64,7 @@ data Config =
          , defaultPage   :: String   -- ^ Default page to show.
          , templateDir   :: FilePath -- ^ Template directory.
          , analytics     :: String   -- ^ Analytics profile id.
+         , pastesDir     :: FilePath -- ^ Directory for sometimes saving paste files.
          } deriving (Show)
 
 -- | Site database/configuration state.

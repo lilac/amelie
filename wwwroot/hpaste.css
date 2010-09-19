@@ -247,6 +247,22 @@ h2.annotations {
     margin-top: 10px;
 }
 li.lang-switch + li { clear: both; }
+.hpaste-hints ul { }
+.hpaste-hints li {
+    background: #FFDFDF; border:1px solid #EFB3B3; -moz-border-radius:2px 2px; 
+    border-radius:2px 2px;
+    padding: 5px;
+}
+.hpaste-hints li + li {
+    margin-top:5px;
+}
+.hlint-clickable {
+    cursor:pointer;
+}
+.hlint-clickable:hover { 
+    background: #ffeded;
+}
+div.hpaste-hints h2.hpaste-section-title { padding-bottom:10px }
 
 /******************************************************************************
  * browse.html

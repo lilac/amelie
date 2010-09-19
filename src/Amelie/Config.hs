@@ -25,10 +25,12 @@ getConfig config = do
   [title,perpage,def,temps]  <- mapM (get c "PRESENTATION")
                                      ["title","perpage","defaultpage","templates"]
   [analytics] <- mapM (get c "THIRDPARTY") ["analytics"]
+  [pastesDir] <- mapM (get c "DIRECTORIES") ["pastesdir"]
   return Config { dbconn        = (host,user,pass) 
                 , siteTitle     = title
                 , pastesPerPage = read perpage
                 , defaultPage   = def
                 , templateDir   = temps
                 , analytics     = analytics
+                , pastesDir     = pastesDir
                 }

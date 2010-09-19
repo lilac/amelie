@@ -19,6 +19,8 @@ $(document).ready(function(){
   form_validation();
   // Dynamic display switcher
   display_switch();
+  // HLint clickable
+  clickable_hlint_errors();
 });
 
 function layout_switcher() {
@@ -202,6 +204,19 @@ function resize_code_container(){
       $(this).width(codeWidth).css('max-width',codeWidth);
       $('.hpaste-info').width(codeWidth);
       $('.hpaste-create-new-paste').width(codeWidth);
+    }
+  });
+}
+
+function clickable_hlint_errors(){
+  $('.hlint-hints li').each(function(){
+    var m = $(this).text().match(/^([0-9]+)/);
+    if (m) {
+      $(this).click(function(){
+      var line = m[0];
+      window.location.href = 
+        window.location.href.replace(/#.*/,'') + '#' + line;
+      }).addClass('hlint-clickable');
     }
   });
 }

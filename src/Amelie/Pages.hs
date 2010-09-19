@@ -1,27 +1,33 @@
 {-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings, FlexibleInstances #-}
 module Amelie.Pages where
 
-import           Control.Applicative        (Applicative(..))
 import           Control.Applicative        ((<$>))
+import           Control.Applicative        (Applicative(..))
 import           Control.Applicative.Error  (Failing(..))
 import           Control.Arrow              ((***))
-import           Control.Monad              (mplus,ap)
+import           Control.Monad              (mplus,ap,unless)
 import           Control.Monad.Reader       (ReaderT)
 import           Control.Monad.Reader       (runReaderT,ask)
 import           Control.Monad.State        (MonadState)
+import           Control.Monad.State        (gets)
 import           Control.Monad.Trans        (MonadIO)
-import           Control.Monad.Trans        (lift)
+import           Control.Monad.Trans        (lift,liftIO)
+import           Data.Char                  (toLower)
 import           Data.List                  (find)
 import           Data.Maybe                 (isJust,fromMaybe)
+import           System.Directory           (doesFileExist)
 
 import           Codec.Binary.UTF8.String   (decodeString,encodeString)
+import qualified Data.ByteString.Char8      as B (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L (concat)
 import           Data.Time.Instances        ()
+import           Language.Haskell.HLint     (hlint)
 import           Network.CGI                (CGIResult)
 import qualified Network.CGI                as CGI
 import           Network.CGI.Monad          (MonadCGI(..))
 import           Safe                       (readMay)
+import           System.FilePath.Posix      ((</>))
 import           Text.Blaze.Renderer.Utf8   (renderHtml)
 
 import           Amelie.DB                  (db)
@@ -29,13 +35,14 @@ import qualified Amelie.DB                  as DB
 import           Amelie.HTML                 (pasteForm,pastesHtmlTable
                                              ,pasteInfoHtml,pastePasteHtml
                                              ,controlPasteHtml,prevNext
-                                             ,pastePreview)
+                                             ,pastePreview,hintsToHTML)
 import           Amelie.Links               (link)
 import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Templates           (template,renderTemplate)
 import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
-                                              Language(..),Channel(..))
+                                              Language(..),Channel(..),
+                                              Config(..))
 import           Amelie.Utils               (l2s,text,failingToMaybe)
 
 -- | A CGI page of recent pastes and paste form.
@@ -106,15 +113,40 @@ renderPaste :: (MonadIO m, MonadState State m)
                -> Maybe Paste
                -> Paste
                -> m (Either String L.ByteString)
-renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title} = 
-    renderTemplate "info_paste" params where
-  params = [("title",l2s . renderHtml . text $ title)
-           ,("info",info)
-           ,("paste",paste')]
+renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title,language} = 
+  if not haskellp
+     then renderTemplate "info_paste" $ params ""
+     else do hints <- hlintHintsHtml paste
+             renderTemplate "info_paste_hlint" $ params hints
+  where
+  haskellp = (map toLower . langName <$> language) == Just "haskell"
+  params hints =
+    [("title",l2s . renderHtml . text $ title)
+    ,("info",info)
+    ,("paste",paste')]
+    ++
+    [("hints",hints) | haskellp]
   info = l2s $ renderHtml $ pasteInfoHtml lang cl paste annotation_of
   paste' = l2s $ renderHtml $ pastePasteHtml paste lang
   lang = lookup lparam ps >>= \name -> find ((==name) . langName) langs
   lparam = "lang_" ++ show pid
+
+-- | Generate HLint hints for a source and render them to HTML.
+hlintHintsHtml :: (MonadIO m,MonadState State m) =>
+                  Paste -> m B.ByteString
+hlintHintsHtml Paste{pid,content} = do
+  -- This is kind of annoying, I have to prepare a temporary file
+  -- for hlint to eat. The alternative is to run hlint as a pipe
+  -- if that works, but I don't feel like doing that, nor do I
+  -- feel like patching it and then having to depend on a patched
+  -- version. Maybe Neil will kindly provide an interface in
+  -- which I can provide the source directly.
+  pastesDir <- gets $ pastesDir . config
+  let path = pastesDir </> show pid ++ ".hs"
+  exists <- liftIO $ doesFileExist path
+  liftIO $ unless exists $ writeFile path content
+  hints <- liftIO $ hlint [path,"--quiet"]
+  return $ l2s $ renderHtml $ hintsToHTML hints
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult

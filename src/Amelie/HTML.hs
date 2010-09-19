@@ -13,6 +13,7 @@ import           Control.Monad               (mplus)
 import           Control.Monad.Identity      (Identity)
 import           Control.Monad.Identity      (runIdentity)
 import           Data.List                   (find)
+import           Data.List.Utils             (replace)
 import           Data.Char                   (isSpace)
 import           Data.Maybe                  (fromMaybe)
 import           Data.Monoid                 (mconcat,mempty)
@@ -22,6 +23,7 @@ import           System.Locale               (defaultTimeLocale)
 
 import           Data.Text                   (pack)
 import           Data.Time.Instances         ()
+import           Language.Haskell.HLint      (Suggestion)
 import           Text.Blaze.Html5            ((!))
 import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -207,3 +209,12 @@ label caption req p inp = li $ inp `X.check` X.ensure p msg where
   li = X.plug $ \xml -> Html.li << [l,xml] where
     l = Html.label << [star,Html.toHtml $ caption ++ ":"]
     star = if req then Html.thespan << ("*"::String) else Html.noHtml
+
+-- TODO: use suggestionLocation to make suggestions clickable (i.e. go to source line).
+-- | HTML version of HLint hints.
+hintsToHTML :: [Suggestion] -> H.Html
+hintsToHTML hints = 
+  H.ul ! A.class_ "hlint-hints" $ mapM_ (H.li . hintToHTML) hints
+
+hintToHTML :: Suggestion -> H.Html
+hintToHTML = H.pre . text . dropWhile (==':') . dropWhile (/=':') . show

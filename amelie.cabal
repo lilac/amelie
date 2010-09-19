@@ -46,3 +46,4 @@ Executable amelie.fcgi
                     ,old-locale         >= 1.0.0.2
                     ,MissingH           >= 1.1.0.3
                     ,utf8-string        >= 0.3.6
+                    ,hlint              >= 1.7.3

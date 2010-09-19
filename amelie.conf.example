@@ -11,3 +11,6 @@ templates = templates
 
 [THIRDPARTY]
 analytics = 
+
+[DIRECTORIES]
+pastesdir = pastes
