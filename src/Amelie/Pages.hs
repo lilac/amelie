@@ -5,7 +5,7 @@ import           Control.Applicative        ((<$>))
 import           Control.Applicative        (Applicative(..))
 import           Control.Applicative.Error  (Failing(..))
 import           Control.Arrow              ((***))
-import           Control.Monad              (mplus,ap,unless)
+import           Control.Monad              (mplus,ap,unless,liftM)
 import           Control.Monad.Reader       (ReaderT)
 import           Control.Monad.Reader       (runReaderT,ask)
 import           Control.Monad.State        (MonadState)
@@ -13,7 +13,7 @@ import           Control.Monad.State        (gets)
 import           Control.Monad.Trans        (MonadIO)
 import           Control.Monad.Trans        (lift,liftIO)
 import           Data.Char                  (toLower)
-import           Data.List                  (find)
+import           Data.List                  (find,isInfixOf)
 import           Data.Maybe                 (isJust,fromMaybe)
 import           System.Directory           (doesFileExist)
 
@@ -139,17 +139,18 @@ renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title,language} =
 hlintHints :: (MonadIO m,MonadState State m) =>
                   Paste -> m [Suggestion]
 hlintHints Paste{pid,content} = do
-  -- This is kind of annoying, I have to prepare a temporary file
-  -- for hlint to eat. The alternative is to run hlint as a pipe
-  -- if that works, but I don't feel like doing that, nor do I
-  -- feel like patching it and then having to depend on a patched
-  -- version. Maybe Neil will kindly provide an interface in
-  -- which I can provide the source directly.
-  pastesDir <- gets $ pastesDir . config
-  let path = pastesDir </> show pid ++ ".hs"
-  exists <- liftIO $ doesFileExist path
-  liftIO $ unless exists $ writeFile path content
-  liftIO $ hlint [path,"--quiet"]
+    -- This is kind of annoying, I have to prepare a temporary file
+    -- for hlint to eat. The alternative is to run hlint as a pipe
+    -- if that works, but I don't feel like doing that, nor do I
+    -- feel like patching it and then having to depend on a patched
+    -- version. Maybe Neil will kindly provide an interface in
+    -- which I can provide the source directly.
+    pastesDir <- gets $ pastesDir . config
+    let path = pastesDir </> show pid ++ ".hs"
+    exists <- liftIO $ doesFileExist path
+    liftIO $ unless exists $ writeFile path content
+    filter (not . boring) `liftM` liftIO (hlint [path,"--quiet"])
+  where boring = isInfixOf "Parse error" . drop 1 . dropWhile (/=' ') . show
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
