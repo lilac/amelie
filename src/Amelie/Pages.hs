@@ -149,6 +149,7 @@ hlintHints Paste{pid,content,language=l} = do
     -- which I can provide the source directly.
     pastesDir <- gets $ pastesDir . config
     let ext | (langName <$> l) == Just "haskell" = "hs" 
+            | otherwise = "hs"
 --            | otherwise                          = "lhs" -- This throws a hlint error.
         path = pastesDir </> show pid ++ "." ++ ext
     exists <- liftIO $ doesFileExist path
