@@ -18,10 +18,10 @@ import           Data.Maybe                 (isJust,fromMaybe)
 import           System.Directory           (doesFileExist)
 
 import           Codec.Binary.UTF8.String   (decodeString,encodeString)
-import qualified Data.ByteString.Char8      as B (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L (concat)
 import           Data.Time.Instances        ()
+import           Language.Haskell.HLint     (Suggestion)
 import           Language.Haskell.HLint     (hlint)
 import           Network.CGI                (CGIResult)
 import qualified Network.CGI                as CGI
@@ -116,8 +116,12 @@ renderPaste :: (MonadIO m, MonadState State m)
 renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title,language} = 
   if not haskellp
      then renderTemplate "info_paste" $ params ""
-     else do hints <- hlintHintsHtml paste
-             renderTemplate "info_paste_hlint" $ params hints
+     else do
+       hints <- hlintHints paste
+       let html = l2s $ renderHtml $ hintsToHTML hints
+           name | null hints = "info_paste"
+                | otherwise  = "info_paste_hlint"
+       renderTemplate name $ params html
   where
   haskellp = (map toLower . langName <$> language) == Just "haskell"
   params hints =
@@ -131,10 +135,10 @@ renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title,language} =
   lang = lookup lparam ps >>= \name -> find ((==name) . langName) langs
   lparam = "lang_" ++ show pid
 
--- | Generate HLint hints for a source and render them to HTML.
-hlintHintsHtml :: (MonadIO m,MonadState State m) =>
-                  Paste -> m B.ByteString
-hlintHintsHtml Paste{pid,content} = do
+-- | Generate HLint hints for a source.
+hlintHints :: (MonadIO m,MonadState State m) =>
+                  Paste -> m [Suggestion]
+hlintHints Paste{pid,content} = do
   -- This is kind of annoying, I have to prepare a temporary file
   -- for hlint to eat. The alternative is to run hlint as a pipe
   -- if that works, but I don't feel like doing that, nor do I
@@ -145,8 +149,7 @@ hlintHintsHtml Paste{pid,content} = do
   let path = pastesDir </> show pid ++ ".hs"
   exists <- liftIO $ doesFileExist path
   liftIO $ unless exists $ writeFile path content
-  hints <- liftIO $ hlint [path,"--quiet"]
-  return $ l2s $ renderHtml $ hintsToHTML hints
+  liftIO $ hlint [path,"--quiet"]
 
 -- | Render a raw paste.
 rawPastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
