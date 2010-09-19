@@ -5,7 +5,7 @@
 module Amelie.HTML where
 
 import           Control.Applicative         (Applicative)
-import           Control.Applicative         (pure,(<$>),(<*>),(*>))
+import           Control.Applicative         (pure,(<$>),(<*>))
 import           Control.Applicative.Error   (Failing(..))
 import           Control.Arrow               (second)
 import           Control.Monad               (ap,when)
@@ -198,7 +198,7 @@ editId pid = XH.optionalInput $ \name ->
 -- | Label an input and apply a predicate to it for making inputs required.
 label :: (Show a,Monad m,Applicative m) =>
           String -> Bool -> (a -> Bool) -> X.Form Html.Html m a -> X.Form Html.Html m a
-label caption req p inp = li $ (inp `X.check` X.ensure p msg) where
+label caption req p inp = li $ inp `X.check` X.ensure p msg where
   msg = caption ++ ": must be provided"
   li = X.plug $ \xml -> Html.li << [l,xml] where
     l = Html.label << [star,Html.toHtml $ caption ++ ":"]
