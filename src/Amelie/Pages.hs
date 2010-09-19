@@ -149,11 +149,10 @@ hlintHints Paste{pid,content,language=l} = do
     -- which I can provide the source directly.
     pastesDir <- gets $ pastesDir . config
     let ext | (langName <$> l) == Just "haskell" = "hs" 
-            | otherwise = "hs"
---            | otherwise                          = "lhs" -- This throws a hlint error.
+            | otherwise                          = "lhs" -- This throws a hlint error.
         path = pastesDir </> show pid ++ "." ++ ext
     exists <- liftIO $ doesFileExist path
-    liftIO $ unless exists $ writeFile path content
+    liftIO $ unless exists $ writeFile path ('\n' : content)
     filter (not . boring) `liftM` liftIO (hlint [path,"--quiet"])
   where boring = isInfixOf "Parse error" . drop 1 . dropWhile (/=' ') . show
 
