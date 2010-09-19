@@ -110,7 +110,8 @@ pastePasteHtml paste@Paste{..} lang = do
   H.style $ text highlightCSS
   H.div $ H.preEscapedString $ fromMaybe (plain $ Html.thecode << content) $ 
     pasteHighlightedHtml paste lang
-    where plain = (\x -> "<pre>" ++ x ++ "</pre>") . Html.showHtmlFragment
+    where plain = (\x -> "<table class='sourceCode'><tr><td><pre>" ++
+            x ++ "</pre></td></tr></table>") . Html.showHtmlFragment
           
 -- | Previous/next Navigation.
 prevNext :: String -> Integer -> Integer -> Bool -> H.Html
