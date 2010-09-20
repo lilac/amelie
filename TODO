@@ -10,17 +10,17 @@
 * DONE: Fluid width by default
 * DONE: Give logo a height to stop it jumping.
 * DONE: Fixed width with button to make fluid
+* DONE: Hlint
+* DONE: CGI search page with pagination
+* DONE: Create README
 
 * Sessions for quickly editing mistakes for just-posted hpastes
 * Checkbox for pastes being editable by anyone
 * Inline comments
-* Hlint
 * Tryhaskell prompt support
 * Context in IRC
 * Revisions
 * Hoogle support ("links") on symbols
 * Unit tests
-* CGI search page with pagination
 * RSS feed
 * JSON feed
-* Create README
