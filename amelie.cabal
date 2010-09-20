@@ -3,7 +3,7 @@ Version:             0.1
 Synopsis:            A paste web site.
 Description:         A simple paste web site based on FastCGI and PostgreSQL.
 Homepage:            http://github.com/chrisdone/amelie
-License:             BSD3
+License:             GPL
 License-file:        LICENSE
 Author:              Chris Done <chrisdone@gmail.com>
 Maintainer:          chrisdone@gmail.com
