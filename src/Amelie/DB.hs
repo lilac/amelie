@@ -64,7 +64,9 @@ insertPaste Paste{..} an_of = DB.execDDL (DB.cmdbind stmt params) where
            ,("author",DB.bindP author)
            ,("language",DB.bindP $ fmap lid language)
            ,("channel",DB.bindP $ fmap cid channel)] ++
-           maybe [] (\p -> [("annotation_of",DB.bindP p)]) an_of
+           maybe [] (\p -> [("annotation_of",DB.bindP p)]) an_of ++
+           [("id", DB.bindP pid) | pid > 0] ++
+           maybe [] (\p -> [("created",DB.bindP p)]) created
 
 -- | Update paste.
 updatePaste :: Paste -> DBM mark Session ()
