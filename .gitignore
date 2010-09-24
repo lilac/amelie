@@ -6,3 +6,4 @@ httpd/*.pid
 amelie.conf
 scrape/
 logs/
+pastes/
