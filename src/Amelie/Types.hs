@@ -26,6 +26,7 @@ data Paste =
         , tags          :: [Tag]          -- ^ Tags/keywords for the paste.
         , created       :: Maybe UTCTime  -- ^ When the paste was created.
         , annotation_of :: Maybe Int      -- ^ Paste which this annotates.
+        , output        :: Maybe String   -- ^ Output of running the code.
         } deriving (Typeable,Data,Show)
 
 -- | Title of the paste/thing.

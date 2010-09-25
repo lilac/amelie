@@ -83,7 +83,8 @@ updatePaste Paste{..} = DB.execDDL (DB.cmdbind stmt params) where
            ,("author",DB.bindP author)
            ,("language",DB.bindP $ fmap lid language)
            ,("channel",DB.bindP $ fmap cid channel)
-           ,("annotation_of",DB.bindP annotation_of)]
+           ,("annotation_of",DB.bindP annotation_of)
+           ,("output",DB.bindP output)]
 
 -- | Channels and languages.
 chansAndLangs :: DBM mark Session ([Channel],[Language])
@@ -161,8 +162,9 @@ pastesByQuery :: ChansAndLangs -> String -> DBM mark Session [Paste]
 pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
   query = "select " ++ fields ++ " from paste " ++ cond
   fields = "id,title,content,tags,author,language,channel," ++
-           "created at time zone 'utc',annotation_of,expire is null"
-  makePaste pid' title' content' tags' author' lang' chan' created' an_of expires xs =
+           "created at time zone 'utc',annotation_of,expire is null,output"
+  makePaste pid' title' content' tags' author' 
+            lang' chan' created' an_of expires output xs =
     DB.result' (paste:xs) where
       paste = Paste { pid = pid'
                     , title    = title'
@@ -174,4 +176,5 @@ pastesByQuery (chans,langs) cond = DB.doQuery (DB.sql query) makePaste [] where
                     , expire   = expires
                     , created  = Just created'
                     , annotation_of = an_of
+                    , output = output
                     }

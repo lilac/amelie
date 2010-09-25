@@ -48,3 +48,6 @@ Executable amelie.fcgi
                     ,utf8-string        >= 0.3.6
                     ,hlint              >= 1.7.3
                     ,higherorder        >= 0.0
+                    ,json               >= 0.4.4
+                    ,tagsoup            >= 0.10.1
+                    ,curl               >= 1.3.5

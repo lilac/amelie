@@ -62,9 +62,9 @@ pastesHtmlTable ps = table . H.tbody . mconcat . map pasteRowHtml $ ps where
           url = link "paste" [("pid",show pid),("title",title)]
 
 -- | Paste info of a paste.
-pasteInfoHtml :: Maybe Language -> ChansAndLangs -> Paste -> Maybe Paste 
+pasteInfoHtml :: Maybe Language -> ChansAndLangs -> Paste -> Maybe Paste -> Bool
                  -> H.Html
-pasteInfoHtml lang cl paste@Paste{..} an_of = do
+pasteInfoHtml lang cl paste@Paste{..} an_of run = do
   H.a ! attr A.id anchor ! attr A.name anchor $ mempty
   H.ul $ do def "Paste" $ href (self "paste") $ text $ '#' : show pid
             maybe mempty (def "Annotation of" . annotation) an_of
@@ -74,6 +74,9 @@ pasteInfoHtml lang cl paste@Paste{..} an_of = do
             def "Raw" $ href (self "raw") $ text "View raw file"
             def "Language" (displayLangSwitcher lang cl paste)
               ! A.class_ "lang-switch"
+            when run $
+              def "Run" $ href (link "paste" [("pid",show pid),("run","true")])
+                               "Run this code (might take a few moments)"
 --            def "Manage" $ href (self "control") "Edit this paste"
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         attr f a = f (H.stringValue a)
@@ -178,6 +181,7 @@ pasteForm paste (chans,langs) inputs =
            <*> pure []
            <*> pure Nothing
            <*> pure Nothing
+           <*> pure Nothing
   languageInput = select (paste >>= language) lid makeLangChoice langs
   channelInput = select (paste >>= channel) cid makeChanChoice chans
   select cur acc make xs =
@@ -217,3 +221,6 @@ hintsToHTML hints =
 
 hintToHTML :: Suggestion -> H.Html
 hintToHTML = H.pre . text . dropWhile (==':') . dropWhile (/=':') . show
+
+codePadHTML :: String -> H.Html
+codePadHTML = H.pre . text

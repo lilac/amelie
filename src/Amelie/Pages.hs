@@ -1,4 +1,4 @@
-{-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings, FlexibleInstances #-}
+ {-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings, FlexibleInstances #-}
 module Amelie.Pages where
 
 import           Control.Applicative        ((<$>))
@@ -12,7 +12,7 @@ import           Control.Monad.Trans        (liftIO)
 import           Data.Char                  (toLower)
 import           Data.List                  (find,isInfixOf)
 import           Data.List.Higher           (list)
-import           Data.Maybe                 (isJust,fromMaybe)
+import           Data.Maybe                 (isJust,isNothing,fromMaybe)
 import           System.Directory           (doesFileExist)
 
 import           Codec.Binary.UTF8.String   (decodeString,encodeString)
@@ -28,13 +28,14 @@ import           Network.CGI.Monad          (MonadCGI(..))
 import           Safe                       (readMay)
 import           System.FilePath.Posix      ((</>))
 import           Text.Blaze.Renderer.Utf8   (renderHtml)
+import           Text.JSON                  (encode,showJSON,makeObj)
 
 import           Amelie.DB                  (db)
 import qualified Amelie.DB                  as DB
 import           Amelie.HTML                 (pasteForm,pastesHtmlTable
                                              ,pasteInfoHtml,pastePasteHtml
                                              ,controlPasteHtml,prevNext
-                                             ,pastePreview,hintsToHTML)
+                                             ,pastePreview,hintsToHTML,codePadHTML)
 import           Amelie.Links               (link)
 import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Templates           (template,renderTemplate,renderedTemplate)
@@ -42,6 +43,7 @@ import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
                                               Language(..),Config(..))
 import           Amelie.Utils               (l2s,text,failingToMaybe)
+import qualified Web.Codepad                as Codepad
 
 -- | A CGI page of recent pastes and paste form.
 pastesPage :: (MonadState State m,MonadCGI m,MonadIO m,Functor m)
@@ -73,10 +75,28 @@ browsePage params _cl = do
         limit = int 30 "limit"
         page = int 1 "page"
         
+-- | JSON resource to get the output of the code on-demand.
+codeOutput :: [(String,String)] -> SCGI CGIResult
+codeOutput ps = do
+  case lookup "pid" ps >>= readMay of
+    Nothing  -> CGI.outputNothing
+    Just pid -> do
+      paste <- db $ DB.pasteById pid ([],[])
+      case paste of
+        Just Paste{output=Just output} ->
+          CGI.output $ encode $
+            makeObj [("success",showJSON True),("output",showJSON output)]
+        _ -> CGI.output $ encode $ makeObj [("success",showJSON False)]
 
 -- | Render a pretty highlighted paste with info.
 pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
-pastePage = asPastePage page where
+pastePage = asPastePage maybeGenOutput where
+  maybeGenOutput ps cl paste@Paste{output=curOutput} = do
+    let run = isJust $ lookup "run" ps
+    if run && isNothing curOutput
+       then do output <- getPasteOutput paste
+               page ps cl paste { output = output }
+       else page ps cl paste
   page ps cl main@Paste{pid=main_id,title=mainTitle,annotation_of} = do
       pastes <- db $ DB.pastesByAnnotationOf main_id cl
       annotated <- case annotation_of of
@@ -98,6 +118,19 @@ pastePage = asPastePage page where
     list (return "") $
       \as -> renderedTemplate "annotations" [("pastes",l2s $ L.concat as)]
 
+-- | Get the paste output.
+getPasteOutput :: Paste -> SCGI (Maybe String)
+getPasteOutput paste@Paste{content,language} = do
+  case language of
+    Nothing                    -> return Nothing
+    Just (Language{langTitle}) -> do
+      res <- Codepad.pasteAndRun content langTitle True
+      case res of
+        Nothing         -> return Nothing
+        Just (_,output) -> do
+          db $ DB.updatePaste paste { output = Just output }
+          return $ Just output
+
 -- | Annotation form.
 getAnnotateForm :: ChansAndLangs -> Paste -> SCGI L.ByteString
 getAnnotateForm cl Paste{pid=annotation_of} = do
@@ -112,15 +145,27 @@ renderPaste :: (Functor m,MonadIO m, MonadState State m)
                -> Maybe Paste
                -> Paste
                -> m (Either String L.ByteString)
-renderPaste ps cl@(_,langs) aof paste@Paste{pid,title,language} = do
+renderPaste ps cl aof paste@Paste{title} = do
+    let langs = "C C++ D Haskell Lua OCaml PHP Perl Python Ruby Scheme Tcl"
+    let (info,paste',lang) = pasteAndInfo ps cl aof paste $ words langs
     hints <- renderHints paste {language=lang}
+    output <- renderOutput paste
     let params = [("title",l2s . renderHtml . text $ title)
                  ,("info",info)
                  ,("paste",paste')
-                 ,("hints",hints)]
+                 ,("hints",hints)
+                 ,("output",output)]
     renderTemplate "paste" $ params
-  where (info,paste',lang) = pasteAndInfo ps cl aof paste
 
+-- | Render the code output via CodePad.
+renderOutput :: (MonadState State m,Functor m,MonadIO m) => Paste -> m B.ByteString
+renderOutput Paste{output=Nothing} = return ""
+renderOutput Paste{output=Just output}
+  | null output = return ""
+  | otherwise = l2s <$> renderedTemplate "output" params
+    where params = [("output",l2s $ renderHtml $ codePadHTML output)]
+
+-- | Render the HLint hints if there are any.
 renderHints :: (MonadState State m,Functor m,MonadIO m) => Paste -> m B.ByteString
 renderHints paste@Paste{language}
   | langIsHaskell language  = do
@@ -138,35 +183,16 @@ langIsHaskell =
 
 -- | Generate the paste and paste info HTML.
 pasteAndInfo :: [(String,String)] -> ChansAndLangs -> Maybe Paste -> Paste
+                -> [Codepad.LangName]
              -> (B.ByteString,B.ByteString,Maybe Language)
-pasteAndInfo ps cl@(_,langs) aof paste@Paste{pid,title,language} =
+pasteAndInfo ps cl@(_,langs) aof paste@Paste{pid,language} supportedLangs =
     (info,paste',lang) where 
-  info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste aof
+  info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste aof run
   paste' = l2s $ renderHtml $ pastePasteHtml paste lang
   lang = (\l->l{langName=map toLower $ langName l}) <$> (lang' `mplus` language)
   lang' = lookup lparam ps >>= \name -> find ((==name) . langName) langs
   lparam = "lang_" ++ show pid
-
--- if not haskellp
-  --    then renderTemplate "paste" $ params ""
-  --    else do
-  --      hints <- hlintHints paste {language=lang}
-  --      hl <- renderedTemplate "hints" [("hints",l2s $ renderHtml $ hintsToHTML hints)]
-  --      renderTemplate "paste" $ params (l2s hl)
-  -- where
-  -- haskellp = let l = langName <$> lang
-  --            in l == Just "haskell" || l == Just "literatehaskell"
-  -- params hints =
-  --   [("title",l2s . renderHtml . text $ title)
-  --   ,("info",info)
-  --   ,("paste",paste')]
-  --   ++
-  --   [("hints",hints) | haskellp]
-  -- info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste annotation_of
-  -- paste' = l2s $ renderHtml $ pastePasteHtml paste lang
-  -- lang = (\l->l{langName=map toLower $ langName l}) <$> (lang' `mplus` language)
-  -- lang' = lookup lparam ps >>= \name -> find ((==name) . langName) langs
-  -- lparam = "lang_" ++ show pid
+  run = any (==maybe "" langTitle language) supportedLangs
 
 -- | Generate HLint hints for a source.
 hlintHints :: (MonadIO m,MonadState State m) =>

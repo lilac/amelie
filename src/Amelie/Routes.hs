@@ -34,6 +34,7 @@ router = do
     "browse"  -> cls $ Pages.browsePage params
     "raw"     -> cls $ Pages.rawPastePage params
     "control" -> cls $ Pages.editCreatePastePage params
+    "output"  -> Pages.codeOutput params
     _         -> Pages.pastesPage
 
 -- | Run a sessioned CGI page with a database connection and configuration.

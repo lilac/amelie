@@ -1,6 +1,6 @@
 module Amelie.Expiry where
 
-import           Control.Monad                  (forever)
+import           Control.Monad                  (forever
 import           Control.Concurrent             (forkIO,threadDelay)
 
 import qualified Database.PostgreSQL.Enumerator as DB
