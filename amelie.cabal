@@ -47,3 +47,4 @@ Executable amelie.fcgi
                     ,MissingH           >= 1.1.0.3
                     ,utf8-string        >= 0.3.6
                     ,hlint              >= 1.7.3
+                    ,higherorder        >= 0.0

@@ -11,6 +11,7 @@ import           Control.Monad.Trans        (MonadIO)
 import           Control.Monad.Trans        (liftIO)
 import           Data.Char                  (toLower)
 import           Data.List                  (find,isInfixOf)
+import           Data.List.Higher           (list)
 import           Data.Maybe                 (isJust,fromMaybe)
 import           System.Directory           (doesFileExist)
 
@@ -35,7 +36,7 @@ import           Amelie.HTML                 (pasteForm,pastesHtmlTable
                                              ,pastePreview,hintsToHTML)
 import           Amelie.Links               (link)
 import           Amelie.Pages.Error         (errorPage)
-import           Amelie.Templates           (template,renderTemplate)
+import           Amelie.Templates           (template,renderTemplate,renderedTemplate)
 import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
                                               Language(..),Config(..))
@@ -83,21 +84,22 @@ pastePage = asPastePage page where
       let paste_renders = renderPaste ps cl annotated main
                           : map (renderPaste ps cl (Just main)) pastes
       rendered <- sequence <$> sequence paste_renders
-      annotateForm <- annotate cl main
+      annotateForm <- getAnnotateForm cl main
       case rendered of
-        Right (html:htmls) -> do
-          let htmls' 
-                | null htmls = []
-                | otherwise = "<h2 class='annotations'>Annotations</h2>" : htmls
-          template mainTitle "paste" [("paste",l2s html)
-                                     ,("annotations",l2s $ L.concat htmls')
-                                     ,("annotate",l2s annotateForm)]
-                   Nothing
+        Right (html:anns) -> do
+          as <- renderAnnotations anns
+          let params = [("paste",l2s html),("annotations",l2s as)
+                       ,("annotate",l2s annotateForm)]
+          template mainTitle "paste" params Nothing
         Right _     -> errorPage "No paste."
         Left err    -> errorPage err
+  renderAnnotations =
+    list (return "") $
+      \as -> renderedTemplate "annotations" [("pastes",l2s $ L.concat as)]
 
-annotate :: ChansAndLangs -> Paste -> SCGI L.ByteString
-annotate cl Paste{pid=annotation_of} = do
+-- | Annotation form.
+getAnnotateForm :: ChansAndLangs -> Paste -> SCGI L.ByteString
+getAnnotateForm cl Paste{pid=annotation_of} = do
   inputs <- map (decodeString *** decodeString) <$> CGI.getInputs
   let (_,formHtml) = pasteForm Nothing cl inputs
   return $ renderHtml $ controlPasteHtml "Annotate paste"

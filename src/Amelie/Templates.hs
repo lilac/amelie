@@ -33,7 +33,7 @@ template :: (Functor m,MonadState State m,MonadCGI m,MonadIO m)
             -> m CGIResult
 template title' name ps inner = do
     anal <- gets $ analytics . config
-    page <- either L.pack id <$> renderTemplate name params
+    page <- renderedTemplate name params
     main <- renderTemplate "template" $ params ++
                [("page",l2s page),("analytics",B.pack anal)]
     case main of
@@ -60,6 +60,11 @@ renderTemplate name ps = do
              return $ Right $ fillTemplate params templ
      else return $ Left $ "No such template file: " ++ show (tempDir </> name)
 
+renderedTemplate :: (Functor m,MonadIO m,MonadState State m)
+                  => PageName -> [(String,B.ByteString)] 
+                  -> m L.ByteString
+renderedTemplate name ps = either L.pack id <$> renderTemplate name ps
+ 
 -- | Fill a template's parameters.
 fillTemplate :: [(String,B.ByteString)] -> B.ByteString -> L.ByteString
 fillTemplate xs str = L.fromChunks . return $ foldl' rep str xs where
