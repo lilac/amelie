@@ -1,7 +1,7 @@
 module Main where
 
 import qualified Network.CGI     as CGI
-import           Network.FastCGI (runFastCGIorCGI)
+import           Network.FastCGI (runFastCGIConcurrent)
 
 import           Amelie.Config   (readConfigFile)
 import           Amelie.Expiry   (runExpiryTask)
@@ -15,4 +15,4 @@ main = do
     Left cperr   -> error $ show cperr
     Right config' -> do
       runExpiryTask config'
-      runFastCGIorCGI $ CGI.handleErrors $ runPage config' router
+      runFastCGIConcurrent 1000 $ CGI.handleErrors $ runPage config' router
