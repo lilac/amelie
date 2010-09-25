@@ -1,6 +1,6 @@
 module Amelie.Expiry where
 
-import           Control.Monad                  (forever,zipWithM_)
+import           Control.Monad                  (forever)
 import           Control.Concurrent             (forkIO,threadDelay)
 
 import qualified Database.PostgreSQL.Enumerator as DB
@@ -13,9 +13,6 @@ runExpiryTask Config{dbconn=(host,user,pass)} = do
   _ <- forkIO $ forever $ do
     DB.withSession connector $
       DB.execDDL $ DB.sql "delete from paste where expire < now()"
-    delay 60
+    threadDelay $ 1000 * 1000 * 30
   return ()
   where connector = DB.connect [DB.CAhost host,DB.CAuser user,DB.CApassword pass]
-        delay minutes = dotimes minutes $ threadDelay $ 1000 * 1000 * 60
-        dotimes :: Monad m => Integer -> m a -> m ()
-        dotimes m = zipWithM_ (curry snd) [1..m] . repeat
