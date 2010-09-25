@@ -16,6 +16,7 @@ import           Data.Maybe                 (isJust,fromMaybe)
 import           System.Directory           (doesFileExist)
 
 import           Codec.Binary.UTF8.String   (decodeString,encodeString)
+import qualified Data.ByteString            as B (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as L (concat)
 import           Data.Time.Instances        ()
@@ -90,7 +91,7 @@ pastePage = asPastePage page where
           as <- renderAnnotations anns
           let params = [("paste",l2s html),("annotations",l2s as)
                        ,("annotate",l2s annotateForm)]
-          template mainTitle "paste" params Nothing
+          template mainTitle "paste_and_annotations" params Nothing
         Right _     -> errorPage "No paste."
         Left err    -> errorPage err
   renderAnnotations =
@@ -106,34 +107,66 @@ getAnnotateForm cl Paste{pid=annotation_of} = do
              Nothing formHtml (Just annotation_of)
 
 -- | Try to a paste info and content to HTML string.
-renderPaste :: (MonadIO m, MonadState State m)
+renderPaste :: (Functor m,MonadIO m, MonadState State m)
                => [(String, String)] -> ChansAndLangs
                -> Maybe Paste
                -> Paste
                -> m (Either String L.ByteString)
-renderPaste ps cl@(_,langs) annotation_of paste@Paste{pid,title,language} = 
-  if not haskellp
-     then renderTemplate "info_paste" $ params ""
-     else do
-       hints <- hlintHints paste {language=lang}
-       let html = l2s $ renderHtml $ hintsToHTML hints
-           name | null hints = "info_paste"
-                | otherwise  = "info_paste_hlint"
-       renderTemplate name $ params html
-  where
-  haskellp = let l = langName <$> lang
-             in l == Just "haskell" || l == Just "literatehaskell"
-  params hints =
-    [("title",l2s . renderHtml . text $ title)
-    ,("info",info)
-    ,("paste",paste')]
-    ++
-    [("hints",hints) | haskellp]
-  info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste annotation_of
+renderPaste ps cl@(_,langs) aof paste@Paste{pid,title,language} = do
+    hints <- renderHints paste {language=lang}
+    let params = [("title",l2s . renderHtml . text $ title)
+                 ,("info",info)
+                 ,("paste",paste')
+                 ,("hints",hints)]
+    renderTemplate "paste" $ params
+  where (info,paste',lang) = pasteAndInfo ps cl aof paste
+
+renderHints :: (MonadState State m,Functor m,MonadIO m) => Paste -> m B.ByteString
+renderHints paste@Paste{language}
+  | langIsHaskell language  = do
+    hints <- hlintHints paste
+    let params = [("hints",l2s $ renderHtml $ hintsToHTML hints)]
+    if null hints
+      then return ""
+      else l2s <$> renderedTemplate "hints" params
+  | otherwise = return ""
+
+-- | Is the language some variation of Haskell?
+langIsHaskell :: Maybe Language -> Bool
+langIsHaskell =
+  (`elem` map (Just . map toLower) ["haskell","literatehaskell"]) . fmap langName
+
+-- | Generate the paste and paste info HTML.
+pasteAndInfo :: [(String,String)] -> ChansAndLangs -> Maybe Paste -> Paste
+             -> (B.ByteString,B.ByteString,Maybe Language)
+pasteAndInfo ps cl@(_,langs) aof paste@Paste{pid,title,language} =
+    (info,paste',lang) where 
+  info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste aof
   paste' = l2s $ renderHtml $ pastePasteHtml paste lang
   lang = (\l->l{langName=map toLower $ langName l}) <$> (lang' `mplus` language)
   lang' = lookup lparam ps >>= \name -> find ((==name) . langName) langs
   lparam = "lang_" ++ show pid
+
+-- if not haskellp
+  --    then renderTemplate "paste" $ params ""
+  --    else do
+  --      hints <- hlintHints paste {language=lang}
+  --      hl <- renderedTemplate "hints" [("hints",l2s $ renderHtml $ hintsToHTML hints)]
+  --      renderTemplate "paste" $ params (l2s hl)
+  -- where
+  -- haskellp = let l = langName <$> lang
+  --            in l == Just "haskell" || l == Just "literatehaskell"
+  -- params hints =
+  --   [("title",l2s . renderHtml . text $ title)
+  --   ,("info",info)
+  --   ,("paste",paste')]
+  --   ++
+  --   [("hints",hints) | haskellp]
+  -- info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste annotation_of
+  -- paste' = l2s $ renderHtml $ pastePasteHtml paste lang
+  -- lang = (\l->l{langName=map toLower $ langName l}) <$> (lang' `mplus` language)
+  -- lang' = lookup lparam ps >>= \name -> find ((==name) . langName) langs
+  -- lparam = "lang_" ++ show pid
 
 -- | Generate HLint hints for a source.
 hlintHints :: (MonadIO m,MonadState State m) =>
