@@ -185,14 +185,15 @@ langIsHaskell =
 pasteAndInfo :: [(String,String)] -> ChansAndLangs -> Maybe Paste -> Paste
                 -> [Codepad.LangName]
              -> (B.ByteString,B.ByteString,Maybe Language)
-pasteAndInfo ps cl@(_,langs) aof paste@Paste{pid,language} supportedLangs =
+pasteAndInfo ps cl@(_,langs) aof paste@Paste{pid,language,output} supportedLangs =
     (info,paste',lang) where 
   info = l2s $ renderHtml $ pasteInfoHtml lang' cl paste aof run
   paste' = l2s $ renderHtml $ pastePasteHtml paste lang
   lang = (\l->l{langName=map toLower $ langName l}) <$> (lang' `mplus` language)
   lang' = lookup lparam ps >>= \name -> find ((==name) . langName) langs
   lparam = "lang_" ++ show pid
-  run = any (==maybe "" langTitle language) supportedLangs
+  run = isNothing output &&
+        any (==maybe "" langTitle language) supportedLangs
 
 -- | Generate HLint hints for a source.
 hlintHints :: (MonadIO m,MonadState State m) =>
