@@ -2,16 +2,13 @@
 module Amelie.Pages where
 
 import           Control.Applicative        ((<$>))
-import           Control.Applicative        (Applicative(..))
 import           Control.Applicative.Error  (Failing(..))
 import           Control.Arrow              ((***))
-import           Control.Monad              (mplus,ap,unless,liftM)
-import           Control.Monad.Reader       (ReaderT)
-import           Control.Monad.Reader       (runReaderT,ask)
+import           Control.Monad              (mplus,unless,liftM)
 import           Control.Monad.State        (MonadState)
 import           Control.Monad.State        (gets)
 import           Control.Monad.Trans        (MonadIO)
-import           Control.Monad.Trans        (lift,liftIO)
+import           Control.Monad.Trans        (liftIO)
 import           Data.Char                  (toLower)
 import           Data.List                  (find,isInfixOf)
 import           Data.Maybe                 (isJust,fromMaybe)
@@ -41,8 +38,7 @@ import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Templates           (template,renderTemplate)
 import           Amelie.Types                (State(..),Paste(..),
                                               ChansAndLangs,SCGI,
-                                              Language(..),Channel(..),
-                                              Config(..))
+                                              Language(..),Config(..))
 import           Amelie.Utils               (l2s,text,failingToMaybe)
 
 -- | A CGI page of recent pastes and paste form.
@@ -229,37 +225,6 @@ pasteErrsOrPreview title errs form submitted paste =
   preview = maybe "" (html . pastePreview) paste
   html = l2s . renderHtml
 
-instance Applicative (ReaderT [(String,String)] Maybe) where
-  (<*>) = ap; pure = return
-
-apiPost :: (Functor m,MonadIO m,MonadCGI m,MonadState State m) =>
-           [(String,String)] -> ChansAndLangs -> m CGIResult
-apiPost _ cl@(cs,ls) = do
-  params <- map (decodeString *** decodeString) <$> CGI.getInputs
-  let input n = do ps <- ask; lift $ lookup n ps
-      paste = flip runReaderT params $
-        Paste <$> (input "pid" >>= lift . readMay)
-              <*> input "title"
-              <*> input "author"
-              <*> (input "language" >>= lift . readMay >>= lift . Just . look lid ls)
-              <*> (input "channel" >>= lift . readMay >>= lift . Just . look cid cs)
-              <*> input "paste"
-              <*> return False
-              <*> return []
-              <*> return Nothing
-              <*> return Nothing
-  annotation_of <- (>>=readMay) <$> CGI.getInput "annotation_of"
-  epaste <- case pid <$> paste of
-    Just eid -> db $ DB.pasteById eid cl
-    Nothing  -> return Nothing
-  case paste of
-    Nothing -> CGI.output "invalid parameters"
-    Just paste' -> do
-      pid' <- insertOrUpdate (fromMaybe paste' epaste) paste' annotation_of
-      CGI.output $ show pid'
-
-look acc xs x = find ((==x).acc) xs
-  
 insertOrUpdate
   :: (MonadState State m, MonadIO m) =>
      Paste -> Paste -> Maybe Int -> m Int
