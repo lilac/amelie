@@ -1,7 +1,8 @@
 -- | Simple pasting API for CodePad.org by Chris Done <chrisdone@gmail.com>
-module Web.CodePad where
+module Web.Codepad where
 
 import           Control.Applicative ((<$>))
+import           Control.Monad.Trans (MonadIO,liftIO)
 import           Data.Char           (isSpace)
 import           Data.Monoid         (mconcat)
 import qualified Network.Curl        as C
@@ -23,23 +24,24 @@ type PasteOutput = String
 type LangName = String
 
 -- | CodePad's domain.
-codePadUrl :: URL
-codePadUrl = "http://codepad.org/"
+codepadUrl :: URL
+codepadUrl = "http://codepad.org/"
 
 -- | A CodePad URL of a page containing a list of supported languages.
-codePadLangsURL :: URL
-codePadLangsURL = "http://hpaste.codepad.org/"
+codepadLangsURL :: URL
+codepadLangsURL = "http://hpaste.codepad.org/"
 
 -- | Make a CodePad URL for the given paste id.
 pasteURL :: PasteId -- ^ ID of the CodePad paste to construct a URL for. 
          -> URL     -- ^ A CodePad URL to the paste.
-pasteURL pid = codePadUrl ++ pid
+pasteURL pid = codepadUrl ++ pid
 
 -- | Paste some code and get the run output too.
-pasteAndRun :: Code                             -- ^ Code to paste. 
+pasteAndRun :: MonadIO m
+            => Code                             -- ^ Code to paste. 
             -> LangName                         -- ^ Language of the code. 
             -> Bool                             -- ^ Private? 
-            -> IO (Maybe (PasteId,PasteOutput)) -- ^ The paste id and the run output.
+            -> m (Maybe (PasteId,PasteOutput)) -- ^ The paste id and the run output.
 pasteAndRun code lang private = do
   result <- pasteCode code lang True private
   case result of
@@ -51,13 +53,14 @@ pasteAndRun code lang private = do
         Just output -> return $ Just (pid,output)
 
 -- | Perform a paste.
-pasteCode :: Code               -- ^ Code to paste. 
+pasteCode :: MonadIO m
+          => Code               -- ^ Code to paste. 
           -> LangName           -- ^ Language of the code. 
           -> Bool               -- ^ Run it?
           -> Bool               -- ^ Private?
-          -> IO (Maybe PasteId) -- ^ The pasted id.
+          -> m (Maybe PasteId) -- ^ The pasted id.
 pasteCode code lang run private = do
-    r <- C.withCurlDo $ getResponse codePadUrl [C.CurlPostFields assocs] 
+    r <- liftIO $ C.withCurlDo $ getResponse codepadUrl [C.CurlPostFields assocs] 
     if C.respStatus r == 302
        then return $ getId <$> lookup "Location" (C.respHeaders r)
        else return Nothing
@@ -72,18 +75,19 @@ pasteCode code lang run private = do
                  ,"submit=Submit"]
 
 -- | Get the run output for a paste id.
-pasteOutput :: PasteId                -- ^ A CodePad paste id.
-            -> IO (Maybe PasteOutput) -- ^ Maybe the run output of that paste.
+pasteOutput :: MonadIO m
+            => PasteId                -- ^ A CodePad paste id.
+            -> m (Maybe PasteOutput) -- ^ Maybe the run output of that paste.
 pasteOutput pid = do
-  (code,t) <- C.withCurlDo $ C.curlGetString_ (pasteURL pid) []
+  (code,t) <- liftIO $ C.withCurlDo $ C.curlGetString_ (pasteURL pid) []
   case code of
     C.CurlOK -> return $ parseOutput t
     _        -> return Nothing
 
 -- | Get the list of supported languages.
-supportedLangs :: IO (Maybe [LangName])
+supportedLangs :: MonadIO m => m (Maybe [LangName])
 supportedLangs = do
-  (code,t) <- C.withCurlDo $ C.curlGetString_ codePadLangsURL []
+  (code,t) <- liftIO $ C.withCurlDo $ C.curlGetString_ codepadLangsURL []
   case code of
     C.CurlOK -> return $ Just $ parseLangs t
     _        -> return Nothing  
