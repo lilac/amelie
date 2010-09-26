@@ -6,6 +6,7 @@ import           Control.Monad.Trans (MonadIO,liftIO)
 import           Data.Char           (isSpace)
 import           Data.Monoid         (mconcat)
 import qualified Network.Curl        as C
+import           Network.URI         (escapeURIString)
 import           Text.HTML.TagSoup   (Tag(..),parseTags)
 
 -- | A URL.
@@ -68,11 +69,12 @@ pasteCode code lang run private = do
                        -> IO (C.CurlResponse_ [(String,String)] String)
         getResponse = C.curlGetResponse_
         getId = reverse . takeWhile (/='/') . reverse
-        assocs = ["code=" ++ code
-                 ,"lang=" ++ lang
+        assocs = ["code=" ++ encode code
+                 ,"lang=" ++ encode lang
                  ,"run=" ++ show run
                  ,"private=" ++ show private
                  ,"submit=Submit"]
+        encode = escapeURIString (const False)
 
 -- | Get the run output for a paste id.
 pasteOutput :: MonadIO m
