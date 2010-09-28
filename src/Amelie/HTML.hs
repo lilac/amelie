@@ -26,10 +26,8 @@ import           Language.Haskell.HLint      (Suggestion)
 import           Text.Blaze.Html5            ((!))
 import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
+import qualified Text.Blaze.Html5.Formlets   as XH
 import qualified Text.Formlets               as X
-import           Text.XHtml.Strict           ((<<))
-import qualified Text.XHtml.Strict           as Html
-import qualified Text.XHtml.Strict.Formlets  as XH
 
 import           Amelie.Highlight            (highlightCSS,pasteHighlightedHtml)
 import           Amelie.Links                (link)
@@ -112,10 +110,11 @@ displayLangSwitcher paramLang (_,langs) Paste{title,pid,language} =
 pastePasteHtml :: Paste -> Maybe Language -> H.Html
 pastePasteHtml paste@Paste{..} lang = do
   H.style $ text highlightCSS
-  H.div $ H.preEscapedString $ fromMaybe (plain $ Html.thecode << content) $ 
-    pasteHighlightedHtml paste lang
-    where plain = (\x -> "<table class='sourceCode'><tr><td><pre>" ++
-            x ++ "</pre></td></tr></table>") . Html.showHtmlFragment
+  H.div $ maybe (plain content) H.preEscapedString $ 
+            pasteHighlightedHtml paste lang
+    where plain x = do
+            H.table ! A.class_ "sourceCode" $ do
+              H.tr $ H.td $ H.pre $ H.code $ text x
           
 -- | Previous/next Navigation.
 prevNext :: String -> Integer -> Integer -> Bool -> H.Html
@@ -164,13 +163,13 @@ pastePreview p = pastePasteHtml p Nothing
 
 -- | A form for controlling pastes; creating, editing.
 pasteForm :: Maybe Paste -> ChansAndLangs -> [(String,String)]
-             -> (Failing Paste,String)
+             -> (Failing Paste,H.Html)
 pasteForm paste (chans,langs) inputs =
   runIdentity $ runForm resultAndHtml where
-  resultAndHtml = (,Html.renderHtmlFragment html) <$> run
+  resultAndHtml = (,html) <$> run
   (run,html,_) = X.runFormState env form
   env = map (second Left) inputs
-  form = X.plug Html.ulist $ 
+  form = X.plug H.ul $ 
      Paste <$> (fromMaybe 0 . (>>=readMay) <$> editId paste)
            <*> label "Title"    True nempty (XH.input $ title <$> paste)
            <*> label "Author"   True nempty (XH.input $ author <$> paste)
@@ -185,33 +184,33 @@ pasteForm paste (chans,langs) inputs =
   languageInput = select (paste >>= language) lid makeLangChoice langs
   channelInput = select (paste >>= channel) cid makeChanChoice chans
   select cur acc make xs =
-    look acc xs <$> XH.select [] (empty ++ map make xs) (acc <$> cur)
-      where  empty = [(0,"")]
+    look acc xs <$> XH.select (empty ++ map make xs) (acc <$> cur)
+      where empty = [(0,"")]
   look acc xs x = find ((==x).acc) xs
-  makeLangChoice Language{lid,langTitle} = (lid,langTitle)
-  makeChanChoice Channel{cid,chanName} = (cid,chanName)
-  pasteInput c = X.plug Html.thediv $ XH.textarea (Just 10) (Just 50) c
+  makeLangChoice Language{lid,langTitle} = (lid,text langTitle)
+  makeChanChoice Channel{cid,chanName} = (cid,text chanName)
+  pasteInput c = X.plug H.div $ XH.textarea (Just 10) (Just 50) c
   clean = filter (/='\r')
   nempty = not . null . filter (not . isSpace)
   we = const True
 
 -- | Embed the id of the paste we're editing in the form.
-editId :: Maybe Paste -> XH.Form Html.Html RunForm (Maybe String)
+editId :: Maybe Paste -> XH.Form H.Html RunForm (Maybe String)
 editId pid = XH.optionalInput $ \name ->
   case pid of
-    Nothing   -> Html.noHtml
+    Nothing   -> mempty
     Just Paste{pid=pid'} ->
-      Html.input Html.! [Html.name name,Html.thetype "hidden"
-                        ,Html.value $ show pid']
+      H.input ! A.name (H.stringValue name) ! A.type_ "hidden"
+              ! A.value (H.stringValue $ show pid')
 
 -- | Label an input and apply a predicate to it for making inputs required.
 label :: (Show a,Monad m,Applicative m) =>
-          String -> Bool -> (a -> Bool) -> X.Form Html.Html m a -> X.Form Html.Html m a
+         String -> Bool -> (a -> Bool) -> X.Form H.Html m a -> X.Form H.Html m a
 label caption req p inp = li $ inp `X.check` X.ensure p msg where
   msg = caption ++ ": must be provided"
-  li = X.plug $ \xml -> Html.li << [l,xml] where
-    l = Html.label << [star,Html.toHtml $ caption ++ ":"]
-    star = if req then Html.thespan << ("*"::String) else Html.noHtml
+  li = X.plug $ \xml -> H.li $ do l; xml where
+    l = H.label $ do star; text $ caption ++ ":"
+    star = if req then H.span "*" else mempty
 
 -- TODO: use suggestionLocation to make suggestions clickable (i.e. go to source line).
 -- | HTML version of HLint hints.
