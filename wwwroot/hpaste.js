@@ -17,11 +17,17 @@ $(document).ready(function(){
   $('.hpaste-new-paste-form textarea').after($('<div class="hpaste-clear"></div>'));
   // Form validation
   form_validation();
+  // Auto-fill details
+  form_fill();
   // Dynamic display switcher
   display_switch();
   // HLint clickable
   clickable_hlint_errors();
 });
+
+function jquery_cookie(a,b) {
+  return $.cookie(a,b,{domain:'hpaste.org',path:'/'});
+}
 
 function layout_switcher() {
   var span =
@@ -29,12 +35,12 @@ function layout_switcher() {
   var select = $('<select><option>Thin</option><option>Wide</option></select>');
   span.append(select);
   $('.hpaste-nav').append(span);
-  if ($.cookie('hpaste-layout')) select.val($.cookie('hpaste-layout'));
+  if (jquery_cookie('hpaste-layout')) select.val(jquery_cookie('hpaste-layout'));
   select.each(changeLayout);
   select.change(changeLayout);
   function changeLayout() {
     var choice = $(this).val();
-    $.cookie('hpaste-layout',choice);
+    jquery_cookie('hpaste-layout',choice);
     if (choice == 'Thin') {
       $('#hpaste-wrap').attr('class','hpaste-wrap-fixed');
     } else if (choice == 'Wide') {
@@ -158,6 +164,57 @@ function form_validation(){
   });
 }
 
+// TODO: Refactor this crap, hehe.
+function form_fill(){
+  var i = 0;
+  $('.hpaste-new-paste-form').find('input,select,textarea').each(function(){
+    var inp = $(this);
+    switch (i) {
+    case 0: {
+      $('.hpaste-info .hpaste-section-title').each(function(){
+        inp.val($(this).text() + ' (annotation)');
+        return false;
+      });
+      break;
+    }
+    case 1: {
+      inp.val(jquery_cookie('author'));
+      break;
+    }
+    case 2: {
+      inp.val(jquery_cookie('language'));
+      break;
+    }
+    case 3: {
+      inp.val(jquery_cookie('channel'));
+      break;
+    }
+    }
+    i++;
+  });
+  $('.hpaste-new-paste-form').submit(function(){
+    var i = 0;
+    $('.hpaste-new-paste-form').find('input,select,textarea').each(function(){
+      var inp = $(this);
+      switch (i) {
+      case 1: {
+        jquery_cookie('author',inp.val());
+        break;
+      }
+      case 2: {
+        jquery_cookie('language',inp.val());
+        break;
+      }
+      case 3: {
+        jquery_cookie('channel',inp.val());
+        break;
+      }
+      }
+      i++;
+    });
+  });
+}
+
 function copy_submit_button(){
   $('div.hpaste-new-paste-form .submit').each(function(){
     var copy = $(this).clone();
@@ -213,9 +270,9 @@ function clickable_hlint_errors(){
     var m = $(this).text().match(/^([0-9]+)/);
     if (m) {
       $(this).click(function(){
-      var line = m[0];
-      window.location.href = 
-        window.location.href.replace(/#.*/,'') + '#' + line;
+        var line = m[0];
+        window.location.href = 
+          window.location.href.replace(/#.*/,'') + '#' + line;
       }).addClass('hlint-clickable');
     }
   });
