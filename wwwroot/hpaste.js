@@ -25,8 +25,10 @@ $(document).ready(function(){
   clickable_hlint_errors();
 });
 
-function jquery_cookie(a,b) {
-  return $.cookie(a,b,{domain:'hpaste.org',path:'/'});
+function jquery_cookie(a,b,def) {
+  var val = $.cookie(a,b,{domain:'hpaste.org',path:'/'});
+  if (val==null) val = def;
+  return val;
 }
 
 function layout_switcher() {
@@ -182,11 +184,11 @@ function form_fill(){
       break;
     }
     case 2: {
-      inp.val(jquery_cookie('language'));
+      inp.val(jquery_cookie('language',0));
       break;
     }
     case 3: {
-      inp.val(jquery_cookie('channel'));
+      inp.val(jquery_cookie('channel',0));
       break;
     }
     }
