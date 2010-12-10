@@ -102,7 +102,7 @@ var ago = (function(){
   function days(ms){return hours(ms)*24;}
   function weeks(ms){return days(ms)*7;}
   function ago(d) {
-    var ms = Date.now() - d;
+    var ms = ((new Date).getTime()) - d;
     var rnd = Math.round;
     var out = '';
     function range(x,y){return ms >= x && ms <= y;};
