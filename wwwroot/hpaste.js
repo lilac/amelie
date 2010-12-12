@@ -26,7 +26,7 @@ $(document).ready(function(){
 });
 
 function jquery_cookie(a,b,def) {
-  var val = $.cookie(a,b,{domain:'hpaste.org',path:'/'});
+  var val = $.cookie(a,b,{domain:'hpaste.org',path:'/',expires:999});
   if (val==null) val = def;
   return val;
 }
@@ -102,7 +102,7 @@ var ago = (function(){
   function days(ms){return hours(ms)*24;}
   function weeks(ms){return days(ms)*7;}
   function ago(d) {
-    var ms = ((new Date).getTime()) - d;
+      var ms = ((new Date).getTime()) - d;
     var rnd = Math.round;
     var out = '';
     function range(x,y){return ms >= x && ms <= y;};
@@ -184,11 +184,29 @@ function form_fill(){
       break;
     }
     case 2: {
-      inp.val(jquery_cookie('language',0));
+      if (jquery_cookie('language') == "0"
+         || !jquery_cookie('language')) {
+        inp.find('option').each(function(){
+          if ($(this).text() == 'Haskell')
+            inp.val($(this).val());
+        });
+      }
+      else {
+        inp.val(jquery_cookie('language',0));
+      }
       break;
     }
     case 3: {
-      inp.val(jquery_cookie('channel',0));
+      if (jquery_cookie('channel') == "0"
+          || !jquery_cookie('channel')) {
+        inp.find('option').each(function(){
+          if ($(this).text() == '#haskell')
+            inp.val($(this).val());
+        });
+      }
+      else {
+        inp.val(jquery_cookie('channel',0));
+      }
       break;
     }
     }
