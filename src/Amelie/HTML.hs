@@ -72,9 +72,9 @@ pasteInfoHtml lang cl paste@Paste{..} an_of run = do
             def "Raw" $ href (self "raw") $ text "View raw file"
             def "Language" (displayLangSwitcher lang cl paste)
               ! A.class_ "lang-switch"
-            when run $
-              def "Run" $ href (link "paste" [("pid",show pid),("run","true")])
-                               "Run this code (might take a few moments)"
+--            when run $
+--              def "Run" $ href (link "paste" [("pid",show pid),("run","true")])
+--                               "Run this code (might take a few moments)"
 --            def "Manage" $ href (self "control") "Edit this paste"
   where def t dd = H.li $ do H.strong $ text $ t ++ ":"; H.span dd
         attr f a = f (H.stringValue a)

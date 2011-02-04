@@ -14,5 +14,5 @@ main = do
   case result of
     Left cperr   -> error $ show cperr
     Right config' -> do
-      runExpiryTask config'
+--      runExpiryTask config'
       runFastCGIConcurrent 1000 $ CGI.handleErrors $ runPage config' router

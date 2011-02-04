@@ -93,7 +93,7 @@ pastePage :: [(String, String)] -> ChansAndLangs -> SCGI CGIResult
 pastePage = asPastePage maybeGenOutput where
   maybeGenOutput ps cl paste@Paste{output=curOutput} = do
     let run = isJust $ lookup "run" ps
-    if run && isNothing curOutput
+    if False && run && isNothing curOutput
        then do output <- getPasteOutput paste
                page ps cl paste { output = output }
        else page ps cl paste
