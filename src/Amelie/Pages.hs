@@ -14,6 +14,7 @@ import           Data.List                  (find,isInfixOf)
 import           Data.List.Higher           (list)
 import           Data.Maybe                 (isJust,isNothing,fromMaybe)
 import           System.Directory           (doesFileExist)
+import qualified Text.Blaze.Html5           as H
 
 import           Codec.Binary.UTF8.String   (decodeString,encodeString)
 import qualified Data.ByteString            as B (ByteString)
@@ -278,7 +279,7 @@ editCreatePaste params cl = do
 
 -- | Paste page with error(s) or preview.
 pasteErrsOrPreview :: (Functor m, MonadState State m, MonadCGI m, MonadIO m)
-                   => String -> [String] -> String -> Bool
+                   => String -> [String] -> H.Html -> Bool
                    -> Maybe Paste 
                    -> m CGIResult
 pasteErrsOrPreview title errs form submitted paste =

@@ -134,7 +134,7 @@ newtype RunForm a = RF { runForm :: Identity a } deriving (Monad,Functor)
 instance Applicative RunForm where (<*>) = ap; pure = return
 
 -- | The HTML container/submitter/error displayer for the paste form.
-controlPasteHtml :: String -> Maybe (Bool,[String]) -> String -> Maybe Int
+controlPasteHtml :: String -> Maybe (Bool,[String]) -> H.Html -> Maybe Int
                 -> H.Html
 controlPasteHtml title s form annotation_of = do
   case s of 
@@ -143,7 +143,7 @@ controlPasteHtml title s form annotation_of = do
       H.ul . mconcat . map (H.li . H.text . pack) $ errs
     _ -> mempty
   H.form ! A.method "post" ! A.action "/control" $ do
-    H.preEscapedString form
+    form
     H.input ! A.type_ "text" ! A.name "email" ! A.value "" ! A.class_ "email"
     H.div ! A.class_ "expire" $ do
       H.input ! A.type_ "checkbox" ! A.name "expire"

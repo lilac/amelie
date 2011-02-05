@@ -4,7 +4,7 @@ import qualified Network.CGI     as CGI
 import           Network.FastCGI (runFastCGIConcurrent)
 
 import           Amelie.Config   (readConfigFile)
-import           Amelie.Expiry   (runExpiryTask)
+-- import           Amelie.Expiry   (runExpiryTask)
 import           Amelie.Routes   (runPage,router)
 
 -- | Main entry point.
