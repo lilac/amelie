@@ -1,6 +1,9 @@
- {-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings, FlexibleInstances #-}
+ {-# LANGUAGE NamedFieldPuns, FlexibleContexts, OverloadedStrings, FlexibleInstances, RecordWildCards #-}
+{-# OPTIONS -fno-warn-name-shadowing #-}
 module Amelie.Pages where
 
+import qualified Data.ByteString.Lazy.UTF8 as UTF8 (toString)
+import           Amelie.Highlight
 import           Control.Applicative        ((<$>))
 import           Control.Applicative.Error  (Failing(..))
 import           Control.Arrow              ((***))
@@ -9,12 +12,18 @@ import           Control.Monad.State        (MonadState)
 import           Control.Monad.State        (gets)
 import           Control.Monad.Trans        (MonadIO)
 import           Control.Monad.Trans        (liftIO)
+import           Data.Char
 import           Data.Char                  (toLower)
 import           Data.List                  (find,isInfixOf)
 import           Data.List.Higher           (list)
-import           Data.Maybe                 (isJust,isNothing,fromMaybe)
+import           Data.Maybe
+import           Data.String
 import           System.Directory           (doesFileExist)
+import           Text.Atom.Feed
+import           Text.Atom.Feed.Export
 import qualified Text.Blaze.Html5           as H
+import qualified Text.Blaze.Html5           as H
+import           Text.XML.Light.Output
 
 import           Codec.Binary.UTF8.String   (decodeString,encodeString)
 import qualified Data.ByteString            as B (ByteString)
@@ -40,9 +49,7 @@ import           Amelie.HTML                 (pasteForm,pastesHtmlTable
 import           Amelie.Links               (link)
 import           Amelie.Pages.Error         (errorPage)
 import           Amelie.Templates           (template,renderTemplate,renderedTemplate)
-import           Amelie.Types                (State(..),Paste(..),
-                                              ChansAndLangs,SCGI,
-                                              Language(..),Config(..))
+import           Amelie.Types
 import           Amelie.Utils               (l2s,text,failingToMaybe)
 import qualified Web.Codepad                as Codepad
 
@@ -295,3 +302,36 @@ insertOrUpdate _old@Paste{annotation_of=an} paste@Paste{pid} an_of =
   if pid > 0
      then do db $ DB.updatePaste paste{annotation_of=an}; return pid
      else db $ DB.createPaste paste an_of
+
+-- | Pastes feed.
+feed :: (Functor m,MonadIO m,MonadState State m,MonadCGI m) => m CGIResult
+feed = do
+  chan <- CGI.getInput "chan"
+  pastes <- db $ DB.allPastesLimitByWChan 30 (fromMaybe "" chan)
+  case pastes of
+    []     -> CGI.output "No pastes!"
+    pastes -> CGI.output $ showTopElement $ xmlFeed $ feed pastes
+
+    where feed pastes = atom {
+              feedEntries = map entry pastes
+            } where atom = nullFeed "" title date
+                    title = TextString "hpaste pastes"
+                    date = fromMaybe "" $ listToMaybe $ 
+                           map (show.created) pastes
+          entry paste@Paste{..} = entry {
+            entryLinks = [(nullLink $ "http://hpaste.org/" ++ show pid) {
+                            linkRel = Just (Right "alternate")
+                          }]
+           ,entryContent = Just $ HTMLContent $
+             maybe (UTF8.toString $ renderHtml $ H.text $ fromString content)
+                   id
+                   html
+           }
+            where entry = nullEntry (show pid) title' (show created)
+                  title' = TextString $
+                    clean author ++ " pasted " ++ show title
+                  clean = filter irc where
+                    irc c = isDigit c || isLetter c || elem c "_-{}[]^"
+                  html = fmap (style++)
+                              (pasteHighlightedHtml paste language)
+                      where style = "<style>" ++ highlightCSS ++ "</style>"

@@ -100,6 +100,16 @@ allPastes = do
   pastesByQuery cl ""
 
 -- | Retrieve all pastes limit by a row count.
+allPastesLimitByWChan :: Integer -> String -> DBM mark Session [Paste]
+allPastesLimitByWChan limit name = do
+  cl <- chansAndLangs
+  let cid' = fmap cid $ find ((==name).chanName) (fst cl)
+  reverse <$> 
+    pastesByQuery cl (unwords ["WHERE annotation_of IS NULL"
+                              ,maybe "" (("AND channel = " ++).show) cid'
+                              ,"ORDER BY id DESC LIMIT " ++ show limit])
+
+-- | Retrieve all pastes limit by a row count.
 allPastesLimitBy :: Integer -> DBM mark Session [Paste]
 allPastesLimitBy limit = do
   cl <- chansAndLangs
