@@ -32,7 +32,7 @@ Executable amelie.fcgi
                     ,fastcgi            == 3001.0.*
                     ,cgi                == 3001.1.*
                     ,Takusen            == 0.8.*
-                    ,text               == 0.10.*
+                    ,text               >= 0.10 && < 0.12
                     ,split              == 0.1.*
                     ,ConfigFile         == 1.0.*
                     ,directory          == 1.0.*
